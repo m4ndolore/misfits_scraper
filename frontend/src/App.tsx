@@ -39,6 +39,7 @@ const App: React.FC = () => {
   const [topics, setTopics] = useState<Topic[]>([]);
   const [filters, setFilters] = useState<DynamicFiltersData | null>(null);
   const [selected, setSelected] = useState<Record<string, string[]>>({});
+  const [appliedFilters, setAppliedFilters] = useState<Record<string, string[]>>({});
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [sortColumn, setSortColumn] = useState<keyof Topic | null>(null);
@@ -52,7 +53,7 @@ const App: React.FC = () => {
 
   const fetchTopics = async () => {
     const formattedFilters = Object.fromEntries(
-      Object.entries(selected).map(([key, value]) => [
+      Object.entries(appliedFilters).map(([key, value]) => [
         key,
         Array.isArray(value) ? value.join(",") : value,
       ])
@@ -135,7 +136,7 @@ const App: React.FC = () => {
   useEffect(() => {
     fetchTopics();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected, page, searchTerm, rowsPerPage]);
+  }, [appliedFilters, page, rowsPerPage]);
 
   const handleSort = (column: keyof Topic) => {
     if (column === sortColumn) {
@@ -241,14 +242,12 @@ const App: React.FC = () => {
           type="text"
           placeholder="Enter search term"
           value={searchTerm}
-          onChange={(e) => {
-            setPage(0);
-            setSearchTerm(e.target.value);
-          }}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && fetchTopics()}
           className="px-4 py-2 text-black rounded w-[300px]"
         />
         <button
-          onClick={() => fetchTopics()}
+          onClick={fetchTopics}
           className="ml-2 px-4 py-2 bg-yellow-500 text-black rounded hover:bg-yellow-600"
         >
           Search
@@ -274,10 +273,12 @@ const App: React.FC = () => {
           solicitations={filters.solicitations}
           selectedFilters={selected}
           onFilterChange={(name, values) => {
-            setPage(0);
-            setSelected((prev) => ({ ...prev, [name]: values }));
+            setSelected(prev => ({ ...prev, [name]: values }));
           }}
-          onApply={fetchTopics}
+          onApply={() => {
+            setAppliedFilters(selected);
+            setPage(0);
+          }}
           fontSize={fontSize}
         />
       )}
