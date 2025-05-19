@@ -6,13 +6,15 @@ interface PaginationControlsProps {
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
-  fontSize: string; // Added fontSize prop
+  fontSize: string;
+  className?: string;
 }
 
 const PaginationControls: React.FC<PaginationControlsProps> = ({
   currentPage,
   totalPages,
   onPageChange,
+  className = '',
 }) => {
   const handlePrevious = () => {
     if (currentPage > 0) onPageChange(currentPage - 1);
@@ -23,7 +25,7 @@ const PaginationControls: React.FC<PaginationControlsProps> = ({
   };
 
   return (
-    <div className="flex justify-center items-center gap-4 py-4 text-yellow-300 text-lg">
+    <div className={`flex justify-center items-center gap-4 py-4 text-yellow-300 text-lg ${className}`}>
       <button
         className="px-4 py-2 bg-gray-800 hover:bg-gray-600 rounded disabled:opacity-40"
         onClick={handlePrevious}
