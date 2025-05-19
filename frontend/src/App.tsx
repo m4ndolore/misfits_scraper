@@ -1,76 +1,45 @@
-import * as React from "react";
-import { useState, useEffect, useCallback } from "react";
+// src/App.tsx
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from "axios";
+import { FilterProvider, useFilterContext } from "./contexts/FilterContext";
+import { toSearchParam } from "./utils/filterUtils";
+import { ApiTopicForFetch, Topic } from "./types";
 import TopicsTable from "./components/TopicsTable";
 import PaginationControls from "./components/PaginationControls";
 import FilterPanel from "./components/FilterPanel";
 import FontSizeToggle from "./components/FontSizeToggle";
 import { FontSize } from "./types/FontSize";
-import { Topic } from "./types/Topic"; // Ensure Topic includes topicId: string;
 import "./App.css";
 
-// Interface for the raw data structure of a topic from the API
-interface ApiTopicForFetch {
-  topicCode: string;
-  topicId: string; // Crucial for PDF downloads - ensure API provides this
-  topicTitle?: string;
-  phaseHierarchy?: string;
-  component?: string;
-  program?: string;
-  topicStatus?: string;
-  solicitationTitle?: string;
-  topicManagers?: any[]; // Consider defining a stricter type if possible
-  technologyAreas?: string[]; // Assumed to be an array of strings from API
-  modernizationPriorities?: string[]; // Assumed to be an array of strings from API
-}
-
-// Interface for the structure of the dynamic filter options
-interface DynamicFiltersData {
-  programs: string[];
-  components: string[];
-  topic_statuses: string[];
-  technology_areas: string[];
-  modernization_priorities: string[];
-  solicitations: string[];
-}
-
-const App: React.FC = () => {
-  const [searchTerm, setSearchTerm] = useState("");
+// Main App component
+const AppContent = () => {
+  const { schema, isLoading } = useFilterContext();
+  const [searchTerm, setSearchTerm] = useState('');
   const [topics, setTopics] = useState<Topic[]>([]);
-  const [filters, setFilters] = useState<DynamicFiltersData | null>(null);
-  const [selected, setSelected] = useState<Record<string, string[]>>({});
-  const [appliedFilters, setAppliedFilters] = useState<Record<string, string[]>>({});
   const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
+  const [fontSize, setFontSize] = useState<FontSize>('medium'); // or 'small' or 'large'
+  const [filters, setFilters] = useState<Record<string, string[]>>({});
+  const [appliedFilters, setAppliedFilters] = useState<Record<string, string[]>>({});
+  const [selectedTopicCodes, setSelectedTopicCodes] = useState<Set<string>>(new Set());
   const [sortColumn, setSortColumn] = useState<keyof Topic | null>(null);
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
-  const [fontSize, setFontSize] = useState<FontSize>("small");
-  const [showFilters, setShowFilters] = useState(true);
-  const [rowsPerPage, setRowsPerPage] = useState(25);
-  const [selectedTopicIdsForDownload, setSelectedTopicIdsForDownload] = useState<Set<string>>(new Set());
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
-  const BASE_API = "https://www.dodsbirsttr.mil/topics/api/public/topics/search";
-
-  const fetchTopics = async () => {
-    const formattedFilters = Object.fromEntries(
-      Object.entries(appliedFilters).map(([key, value]) => [
-        key,
-        Array.isArray(value) ? value.join(",") : value,
-      ])
-    );
-
-    const params: Record<string, any> = {
-      size: rowsPerPage,
-      page,
-      q: searchTerm || "",
-      ...formattedFilters,
-    };
-
+  const fetchTopics = useCallback(async () => {
     try {
-      const res = await axios.get(BASE_API, { params });
-      const apiTopics: ApiTopicForFetch[] = res.data.data || [];
+      const searchParams = toSearchParam({
+        ...appliedFilters,
+        searchText: searchTerm,
+      });
 
-      const transformedTopics: Topic[] = apiTopics.map((topic: ApiTopicForFetch) => ({
+      const encodedParams = encodeURIComponent(JSON.stringify(searchParams));
+      const url = `https://www.dodsbirsttr.mil/topics/api/public/topics/search?searchParam=${encodedParams}&size=${rowsPerPage}&page=${page}`;
+      
+      const res = await axios.get<{ content: ApiTopicForFetch[], totalElements: number }>(url);
+      const apiTopics = res.data.content || [];
+      
+      const transformedTopics: Topic[] = apiTopics.map(topic => ({
         topicCode: topic.topicCode,
         topicId: topic.topicId,
         topicTitle: topic.topicTitle || "N/A",
@@ -83,244 +52,107 @@ const App: React.FC = () => {
       }));
 
       setTopics(transformedTopics);
-
-      // Helper type guard to filter out undefined/null and empty/whitespace-only strings
-      const isNonEmptyString = (v: string | undefined | null): v is string => 
-        typeof v === "string" && v.trim() !== "";
-
-      // Create arrays of definite strings first from the current batch of apiTopics
-      const currentBatchPrograms: string[] = apiTopics
-        .map(t => t.program)
-        .filter(isNonEmptyString);
-      const currentBatchComponents: string[] = apiTopics
-        .map(t => t.component)
-        .filter(isNonEmptyString);
-      const currentBatchTopicStatuses: string[] = apiTopics
-        .map(t => t.topicStatus)
-        .filter(isNonEmptyString);
-      const currentBatchTechAreas: string[] = apiTopics
-        .flatMap(t => t.technologyAreas || []) // Assumes t.technologyAreas is string[] or undefined
-        .filter(isNonEmptyString);
-      const currentBatchModPriorities: string[] = apiTopics
-        .flatMap(t => t.modernizationPriorities || []) // Assumes t.modernizationPriorities is string[] or undefined
-        .filter(isNonEmptyString);
-      const currentBatchSolicitations: string[] = apiTopics
-        .map(t => t.solicitationTitle)
-        .filter(isNonEmptyString);
-      
-      // Update filters by merging new options with existing ones
-      setFilters(prevFilters => {
-        const newPrograms = new Set([...(prevFilters?.programs || []), ...currentBatchPrograms]);
-        const newComponents = new Set([...(prevFilters?.components || []), ...currentBatchComponents]);
-        const newTopicStatuses = new Set([...(prevFilters?.topic_statuses || []), ...currentBatchTopicStatuses]);
-        const newTechAreas = new Set([...(prevFilters?.technology_areas || []), ...currentBatchTechAreas]);
-        const newModPriorities = new Set([...(prevFilters?.modernization_priorities || []), ...currentBatchModPriorities]);
-        const newSolicitations = new Set([...(prevFilters?.solicitations || []), ...currentBatchSolicitations]);
-
-        return {
-          programs: Array.from(newPrograms).sort(),
-          components: Array.from(newComponents).sort(),
-          topic_statuses: Array.from(newTopicStatuses).sort(),
-          technology_areas: Array.from(newTechAreas).sort(),
-          modernization_priorities: Array.from(newModPriorities).sort(),
-          solicitations: Array.from(newSolicitations).sort(),
-        };
-      });
-      
-      setTotalPages(Math.ceil(res.data.total / rowsPerPage));
+      setTotalPages(Math.ceil((res.data.totalElements || 0) / rowsPerPage));
     } catch (error) {
-      console.error("Error fetching topics:", error);
+      console.error('Error fetching topics:', error);
+      setTopics([]);
+      setTotalPages(1);
     }
-  };
+  }, [appliedFilters, searchTerm, page, rowsPerPage]);
 
   useEffect(() => {
     fetchTopics();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appliedFilters, page, rowsPerPage]);
+  }, [fetchTopics]);
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    setPage(0);
+    fetchTopics();
+  };
+
+  const handleSelectionChange = (selected: Set<string>) => {
+    setSelectedTopicCodes(selected);
+    // You can add any additional logic here when selection changes
+  };
 
   const handleSort = (column: keyof Topic) => {
-    if (column === sortColumn) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    // If the same column is clicked, toggle the sort direction
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
     } else {
+      // New column, set to ascending by default
       setSortColumn(column);
-      setSortDirection("asc");
+      setSortDirection('asc');
     }
   };
 
-  const exportToCSV = () => {
-    if (topics.length === 0) {
-      alert("No topics available to export.");
-      return;
-    }
-    const headers = [
-      "Topic Code", "Topic ID", "Title", "Phase", "Component", "Program", 
-      "Status", "Solicitation", "TPOC Name", "TPOC Email", "TPOC Phone",
-    ];
-    const rows = topics.map((topic) => {
-      let phaseDisplay = "N/A";
-      try {
-        if (topic.phaseHierarchy && typeof topic.phaseHierarchy === 'string') {
-          const parsedPhase = JSON.parse(topic.phaseHierarchy);
-          phaseDisplay = parsedPhase?.config?.map((phase: any) => phase.displayValue).join(", ") || "N/A";
-        }
-      } catch { /* Keep N/A */ }
-      
-      const sanitizeCell = (cellData: any): string => {
-        const str = String(cellData === undefined || cellData === null ? '' : cellData);
-        return `"${str.replace(/"/g, '""')}"`;
-      };
-
-      return [
-        sanitizeCell(topic.topicCode),
-        sanitizeCell(topic.topicId),
-        sanitizeCell(topic.topicTitle),
-        sanitizeCell(phaseDisplay),
-        sanitizeCell(topic.component),
-        sanitizeCell(topic.program),
-        sanitizeCell(topic.topicStatus),
-        sanitizeCell(topic.solicitationTitle),
-        sanitizeCell(topic.topicManagers?.[0]?.name),
-        sanitizeCell(topic.topicManagers?.[0]?.email),
-        sanitizeCell(topic.topicManagers?.[0]?.phone),
-      ].join(",");
-    });
-    const csvContent = [headers.join(","), ...rows].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", "topics.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
-
-  const handleSelectionChange = useCallback((selectedIds: Set<string>) => {
-    setSelectedTopicIdsForDownload(selectedIds);
-  }, []);
-
-  const handleDownloadPdfs = () => {
-    if (selectedTopicIdsForDownload.size === 0) {
-      alert("Please select at least one topic to download its PDF.");
-      return;
-    }
-    selectedTopicIdsForDownload.forEach(topicId => {
-      const downloadUrl = `/api/download_pdf/${topicId}`;
-      window.open(downloadUrl, '_blank');
-    });
-  };
+  if (isLoading) {
+    return <div>Loading filters...</div>;
+  }
 
   return (
-    <div className={`min-h-screen bg-[#355e93] text-white text-${fontSize} relative`}>
-      <div className="flex justify-between items-center px-6 py-4 absolute w-full top-0 z-10">
-        <div className="flex items-center">
-          <button
-            onClick={exportToCSV}
-            className="bg-yellow-500 text-black px-4 py-2 rounded hover:bg-yellow-600 mr-3"
+    <div className="min-h-screen bg-[#355e93] text-white">
+      <div className="flex justify-between items-center p-4">
+        <h1 className="text-2xl font-bold">Misfit Scraper</h1>
+        <FontSizeToggle currentSize={fontSize} onChange={setFontSize} />
+      </div>
+
+      <form onSubmit={handleSearch} className="p-4">
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search topics..."
+            className="flex-1 p-2 border rounded text-black"
+          />
+          <button 
+            type="submit" 
+            className="bg-yellow-500 text-black px-4 py-2 rounded hover:bg-yellow-600"
           >
-            Export CSV
-          </button>
-          <button
-            onClick={handleDownloadPdfs}
-            disabled={selectedTopicIdsForDownload.size === 0}
-            className="bg-green-500 hover:bg-green-600 text-black px-4 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Download PDFs ({selectedTopicIdsForDownload.size})
+            Search
           </button>
         </div>
-        <FontSizeToggle
-          currentSize={fontSize}
-          onChange={(size) => setFontSize(size)}
-        />
-      </div>
+      </form>
 
-      <h1 className="text-center text-3xl pt-20 pb-4">DoD SBIR Topic Search</h1>
-
-      <div className="flex justify-center my-4">
-        <input
-          type="text"
-          placeholder="Enter search term"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && fetchTopics()}
-          className="px-4 py-2 text-black rounded w-[300px]"
-        />
-        <button
-          onClick={fetchTopics}
-          className="ml-2 px-4 py-2 bg-yellow-500 text-black rounded hover:bg-yellow-600"
-        >
-          Search
-        </button>
-      </div>
-
-      <div className="text-center mb-4">
-        <button
-          onClick={() => setShowFilters((prev) => !prev)}
-          className="bg-gray-800 text-yellow-400 px-4 py-2 rounded hover:bg-gray-600"
-        >
-          {showFilters ? "Hide Filters" : "Show Filters"}
-        </button>
-      </div>
-
-      {showFilters && filters && (
-        <FilterPanel
-          programs={filters.programs}
-          components={filters.components}
-          topicStatuses={filters.topic_statuses}
-          technologyAreas={filters.technology_areas}
-          modernizationPriorities={filters.modernization_priorities}
-          solicitations={filters.solicitations}
-          selectedFilters={selected}
-          onFilterChange={(name, values) => {
-            setSelected(prev => ({ ...prev, [name]: values }));
-          }}
-          onApply={() => {
-            setAppliedFilters(selected);
-            setPage(0);
-          }}
-          fontSize={fontSize}
-        />
-      )}
-
-      <TopicsTable
-        topics={topics}
-        onSort={handleSort}
-        sortColumn={sortColumn}
-        sortDirection={sortDirection}
+      <FilterPanel
+        schema={schema}
+        selectedFilters={filters}
+        onFilterChange={(name: string, values: string[]) => {
+          setFilters(prev => ({ ...prev, [name]: values }));
+        }}
+        onApply={() => {
+          setAppliedFilters({...filters});
+          setPage(0);
+        }}
         fontSize={fontSize}
-        onSelectionChange={handleSelectionChange}
       />
 
-      <div className="flex justify-between items-center mt-4 px-4 pb-4">
+      <div className="p-4">
+        <TopicsTable
+          topics={topics}
+          onSelectionChange={handleSelectionChange}
+          fontSize={fontSize}
+          sortColumn={sortColumn}
+          sortDirection={sortDirection}
+          onSort={handleSort}
+        />
+        
         <PaginationControls
           currentPage={page}
           totalPages={totalPages}
-          onPageChange={(newPage) => setPage(newPage)}
-          fontSize={fontSize}
-        />
-        <div className="flex items-center">
-          <label htmlFor="rowsPerPage" className="mr-2 text-sm">
-            Rows per page:
-          </label>
-          <select
-            id="rowsPerPage"
-            value={rowsPerPage}
-            onChange={(e) => {
-              setRowsPerPage(Number(e.target.value));
-              setPage(0);
-            }}
-            className="px-2 py-1 border rounded text-black"
-          >
-            <option value={10}>10</option>
-            <option value={25}>25</option>
-            <option value={50}>50</option>
-            <option value={100}>100</option>
-          </select>
-        </div>
+          onPageChange={setPage}
+          className="mt-4" fontSize={fontSize}        />
       </div>
     </div>
   );
 };
+
+// Wrap your app with FilterProvider
+const App = () => (
+  <FilterProvider>
+    <AppContent />
+  </FilterProvider>
+);
 
 export default App;

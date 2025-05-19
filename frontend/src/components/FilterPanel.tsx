@@ -1,89 +1,96 @@
-import * as React from "react";
+// src/components/FilterPanel.tsx
+import React from 'react';
+import Select from 'react-select';
+import { FilterSchema } from '../types';
 
 type FilterPanelProps = {
-  programs: string[];
-  components: string[];
-  topicStatuses: string[];
-  technologyAreas: string[];
-  modernizationPriorities: string[];
-  solicitations: string[];
+  schema: FilterSchema;
   selectedFilters: Record<string, string[]>;
-  onFilterChange: (filterName: string, values: string[]) => void;
+  onFilterChange: (name: string, values: string[]) => void;
   onApply: () => void;
-  fontSize: string; // Maintain fontSize functionality
+  fontSize: string;
 };
 
 const FilterPanel: React.FC<FilterPanelProps> = ({
-  programs = [],
-  components = [],
-  topicStatuses = [],
-  technologyAreas = [],
-  modernizationPriorities = [],
-  solicitations = [],
-  selectedFilters = {},
+  schema,
+  selectedFilters,
   onFilterChange,
   onApply,
   fontSize,
 }) => {
-  // Helper function to render a multi-select dropdown
-  const renderSelect = (
-    label: string,
-    name: keyof FilterPanelProps["selectedFilters"],
-    options: string[],
-    selected: string[] = []
-  ) => (
-    <div className="flex flex-col items-start flex-1 min-w-[180px]">
-      <label htmlFor={name} className="font-bold mb-1">
-        {label}
-      </label>
-      <select
-        id={name}
-        multiple
-        value={selected}
-        onChange={(e) =>
-          onFilterChange(
-            name,
-            Array.from(e.target.selectedOptions, (opt) => opt.value)
-          )
-        }
-        className="w-full h-[100px] text-black p-1 rounded"
-      >
-        {options.map((opt) => (
-          <option key={opt} value={opt}>
-            {opt}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-
   return (
-    <>
-      {/* Render filter dropdowns */}
-      <div className={`flex flex-wrap justify-center gap-4 px-4 mt-6 ${fontSize}`}>
-        {renderSelect("Program", "programs", programs, selectedFilters.programs || [])}
-        {renderSelect("Component", "components", components, selectedFilters.components || [])}
-        {renderSelect("Technology Areas", "technologyAreas", technologyAreas, selectedFilters.technologyAreas || [])}
-        {renderSelect(
-          "Modernization Priorities",
-          "modernizationPriorities",
-          modernizationPriorities,
-          selectedFilters.modernizationPriorities || []
-        )}
-        {renderSelect("Solicitation", "solicitations", solicitations, selectedFilters.solicitations || [])}
-        {renderSelect("Topic Status", "topicStatuses", topicStatuses, selectedFilters.topicStatuses || [])}
+    <div className="p-4" style={{ fontSize }}>
+      <h3 className="text-lg font-semibold mb-4">Filters</h3>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div>
+          <label className="block mb-2">Components</label>
+          <Select
+            isMulti
+            options={schema.components}
+            value={schema.components.filter(option => 
+              selectedFilters.components?.includes(option.value) || false
+            )}
+            onChange={(selected) => 
+              onFilterChange('components', selected ? selected.map(s => s.value) : [])
+            }
+            className="text-black"
+          />
+        </div>
+
+        <div>
+          <label className="block mb-2">Programs</label>
+          <Select
+            isMulti
+            options={schema.programs}
+            value={schema.programs.filter(option => 
+              selectedFilters.programs?.includes(option.value) || false
+            )}
+            onChange={(selected) => 
+              onFilterChange('programs', selected ? selected.map(s => s.value) : [])
+            }
+            className="text-black"
+          />
+        </div>
+
+        <div>
+          <label className="block mb-2">Modernization Priorities</label>
+          <Select
+            isMulti
+            options={schema.modernizationPriorities}
+            value={schema.modernizationPriorities.filter(option => 
+              selectedFilters.modernizationPriorities?.includes(option.value) || false
+            )}
+            onChange={(selected) => 
+              onFilterChange('modernizationPriorities', selected ? selected.map(s => s.value) : [])
+            }
+            className="text-black"
+          />
+        </div>
+
+        <div>
+          <label className="block mb-2">Topic Status</label>
+          <Select
+            isMulti
+            options={schema.topicStatuses}
+            value={schema.topicStatuses.filter(option => 
+              selectedFilters.topicStatuses?.includes(option.value) || false
+            )}
+            onChange={(selected) => 
+              onFilterChange('topicStatuses', selected ? selected.map(s => s.value) : [])
+            }
+            className="text-black"
+          />
+        </div>
       </div>
 
-      {/* Apply Filters button */}
-      <div className="text-center mt-4">
-        <button
-          onClick={onApply}
-          className="bg-yellow-500 text-black px-6 py-2 rounded hover:bg-yellow-600 transition"
-        >
-          Apply Filters
-        </button>
-      </div>
-    </>
+      <button 
+        onClick={onApply} 
+        className="mt-4 bg-yellow-500 text-black px-4 py-2 rounded hover:bg-yellow-600"
+      >
+        Apply Filters
+      </button>
+    </div>
   );
 };
 
