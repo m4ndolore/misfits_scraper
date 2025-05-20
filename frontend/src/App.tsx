@@ -36,8 +36,10 @@ const AppContent = () => {
       const encodedParams = encodeURIComponent(JSON.stringify(searchParams));
       const url = `https://www.dodsbirsttr.mil/topics/api/public/topics/search?searchParam=${encodedParams}&size=${rowsPerPage}&page=${page}`;
       
-      const res = await axios.get<{ content: ApiTopicForFetch[], totalElements: number }>(url);
-      const apiTopics = res.data.content || [];
+      const res = await axios.get<{ data: ApiTopicForFetch[], total: number }>(url);
+      const apiTopics = res.data.data || [];
+      
+      console.log('API Response:', res.data); // Debug log
       
       const transformedTopics: Topic[] = apiTopics.map(topic => ({
         topicCode: topic.topicCode,
@@ -51,18 +53,20 @@ const AppContent = () => {
         topicManagers: topic.topicManagers || [],
       }));
 
+      console.log('Transformed Topics:', transformedTopics); // Debug log
+      
       setTopics(transformedTopics);
-      setTotalPages(Math.ceil((res.data.totalElements || 0) / rowsPerPage));
+      setTotalPages(Math.ceil((res.data.total || 0) / rowsPerPage));
     } catch (error) {
       console.error('Error fetching topics:', error);
       setTopics([]);
       setTotalPages(1);
     }
-  }, [appliedFilters, searchTerm, page, rowsPerPage]);
+  }, [appliedFilters, searchTerm, rowsPerPage, page]);
 
   useEffect(() => {
     fetchTopics();
-  }, [fetchTopics]);
+  }, [fetchTopics, page, rowsPerPage]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,12 +96,27 @@ const AppContent = () => {
 
   return (
     <div className="min-h-screen bg-[#355e93] text-white">
-      <div className="flex justify-between items-center p-4">
-        <h1 className="text-2xl font-bold">Misfit Scraper</h1>
-        <FontSizeToggle currentSize={fontSize} onChange={setFontSize} />
+    {/* Header */}
+    <header className="bg-[#1e3a5f] px-6 py-8 shadow-md text-white">
+      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+        <div>
+          <h1 className="text-5xl font-extrabold leading-tight text-white">
+            Misfit powered by
+            <br />
+            <span className="text-yellow-400 font-bold">The Merge Combinator</span>
+          </h1>
+          <h2 className="text-xl mt-2 text-gray-200 font-normal">The GCH SIBR/STTR Wizard</h2>
+        </div>
+        <div className="self-start md:self-center">
+          <FontSizeToggle currentSize={fontSize} onChange={setFontSize} />
+        </div>
       </div>
+    </header>
 
-      <form onSubmit={handleSearch} className="p-4">
+    {/* Main Content */}
+    <main className="p-4 space-y-6">
+      {/* Search Form */}
+      <form onSubmit={handleSearch}>
         <div className="flex gap-2">
           <input
             type="text"
@@ -106,8 +125,8 @@ const AppContent = () => {
             placeholder="Search topics..."
             className="flex-1 p-2 border rounded text-black"
           />
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             className="bg-yellow-500 text-black px-4 py-2 rounded hover:bg-yellow-600"
           >
             Search
@@ -115,6 +134,7 @@ const AppContent = () => {
         </div>
       </form>
 
+      {/* Filter Panel */}
       <FilterPanel
         schema={schema}
         selectedFilters={filters}
@@ -122,13 +142,14 @@ const AppContent = () => {
           setFilters(prev => ({ ...prev, [name]: values }));
         }}
         onApply={() => {
-          setAppliedFilters({...filters});
+          setAppliedFilters({ ...filters });
           setPage(0);
         }}
         fontSize={fontSize}
       />
 
-      <div className="p-4">
+      {/* Results Table & Pagination */}
+      <div>
         <TopicsTable
           topics={topics}
           onSelectionChange={handleSelectionChange}
@@ -137,16 +158,19 @@ const AppContent = () => {
           sortDirection={sortDirection}
           onSort={handleSort}
         />
-        
+
         <PaginationControls
           currentPage={page}
           totalPages={totalPages}
           onPageChange={setPage}
-          className="mt-4" fontSize={fontSize}        />
+          className="mt-4"
+          fontSize={fontSize}
+        />
       </div>
+    </main>
     </div>
   );
-};
+}
 
 // Wrap your app with FilterProvider
 const App = () => (

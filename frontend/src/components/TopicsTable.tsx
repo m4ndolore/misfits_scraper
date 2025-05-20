@@ -20,6 +20,8 @@ const TopicsTable: React.FC<Props> = ({
   // INSERTION: Destructure the new prop
   onSelectionChange,
 }) => {
+  console.log('TopicsTable - topics prop:', topics); // Debug log
+  
   const fontSizeStyle = {
     fontSize: fontSize === "small" ? "10pt" : fontSize === "large" ? "14pt" : "12pt",
   };
@@ -30,12 +32,18 @@ const TopicsTable: React.FC<Props> = ({
 
   // --- INSERTION: Effect to clear selections when topics list changes ---
   React.useEffect(() => {
-    const newSelection = new Set<string>();
-    setSelectedTopicCodes(newSelection);
-    if (onSelectionChange) {
-      onSelectionChange(newSelection);
+    // Only reset selections if we have topics and the topic codes have actually changed
+    const currentTopicCodes = new Set(topics?.map(t => t.topicCode) || []);
+    const hasChanged = selectedTopicCodes.size > 0 && 
+      (selectedTopicCodes.size !== currentTopicCodes.size || 
+       !Array.from(selectedTopicCodes).every(code => currentTopicCodes.has(code)));
+    
+    if (hasChanged) {
+      const newSelection = new Set<string>();
+      setSelectedTopicCodes(newSelection);
+      onSelectionChange?.(newSelection);
     }
-  }, [topics, onSelectionChange]); // Added onSelectionChange to dependency array
+  }, [topics]); // Only depend on topics
   // --- END INSERTION ---
 
   // --- INSERTION: Determine if all current topics are selected ---
