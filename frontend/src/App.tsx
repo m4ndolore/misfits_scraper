@@ -10,27 +10,6 @@ import FilterPanel from "./components/FilterPanel";
 import FontSizeToggle from "./components/FontSizeToggle";
 import { FontSize } from "./types/FontSize";
 
-// Test component to verify Bootstrap is working
-const BootstrapTest = () => (
-  <div className="container mt-4">
-    <div className="card" style={{ maxWidth: '24rem', margin: '0 auto' }}>
-      <div className="card-body">
-        <div className="d-flex align-items-center">
-          <div className="me-3">
-            <div className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style={{ width: '48px', height: '48px' }}>
-              <span className="fw-bold">BS</span>
-            </div>
-          </div>
-          <div>
-            <h5 className="card-title mb-1">Bootstrap</h5>
-            <p className="card-text text-muted mb-0">You have a new message!</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-);
-
 // Main App component
 
 const AppContent = () => {
@@ -38,7 +17,7 @@ const AppContent = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [topics, setTopics] = useState<Topic[]>([]);
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [rowsPerPage, setRowsPerPage] = useState(25);
   const [totalPages, setTotalPages] = useState(1);
   const [fontSize, setFontSize] = useState<FontSize>('medium'); // or 'small' or 'large'
   const [filters, setFilters] = useState<Record<string, string[]>>({});
@@ -116,26 +95,23 @@ const AppContent = () => {
   }
 
   return (
-    <div className="container-fluid p-0">
-      <BootstrapTest />
-      
+    <div className="container-fluid p-0">      
       {/* Header */}
       <header className="bg-primary text-white py-4">
         <div className="container">
           <div className="d-flex justify-content-between align-items-start">
             <div className="flex-grow-1">
-              <h1 className="display-5 fw-bold mb-2">
+              <h4 className="display-7 fw-bold mb-2">
                 Misfit powered by <br />
                 <span className="text-warning">The Merge Combinator</span>
-              </h1>
-              <h2 className="h4 fw-light mb-3">
+              </h4>
+              <h2 className="h1 fw-light mb-2 text-center">
                 The GCH SIBR/STTR Wizard
               </h2>
-              <h3 className="display-6 text-danger">Bootstrap is Working!</h3>
             </div>
             <div className="d-flex flex-column align-items-end">
               <FontSizeToggle currentSize={fontSize} onChange={setFontSize} />
-              <span className="text-white">Toggle font size</span>
+              <span className="h4 text-black">Toggle font size</span>
             </div>
           </div>
         </div>

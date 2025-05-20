@@ -1,8 +1,60 @@
 /* Import Bootstrap */
 @import 'bootstrap/dist/css/bootstrap.min.css';
+@import 'bootstrap-icons/font/bootstrap-icons.css';
 
 /* Custom styles */
 body {
   background-color: #f0f0f0;
   padding: 20px;
+}
+
+/* Table styles */
+.table th {
+  white-space: nowrap;
+  vertical-align: middle;
+  position: relative;
+  cursor: pointer;
+}
+
+.table th:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.table th.cursor-pointer {
+  cursor: pointer;
+}
+
+.table th i {
+  font-size: 0.8em;
+  margin-left: 4px;
+}
+
+/* Responsive table */
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Badge styles */
+.badge {
+  font-weight: 500;
+}
+
+/* Status badges */
+.badge.bg-success {
+  background-color: #198754 !important;
+}
+
+.badge.bg-secondary {
+  background-color: #6c757d !important;
+}
+
+/* Hover effects */
+.table-hover > tbody > tr:hover {
+  --bs-table-accent-bg: rgba(13, 110, 253, 0.05);
+}
+
+/* Selected row */
+.table-active {
+  --bs-table-accent-bg: rgba(13, 110, 253, 0.15) !important;
 }

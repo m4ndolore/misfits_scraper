@@ -85,94 +85,162 @@ const TopicsTable: React.FC<Props> = ({
 
   if (!Array.isArray(topics) || topics.length === 0) {
     return (
-      <div style={fontSizeStyle} className="text-center text-gray-300 mt-6">
-        No topics found.
+      <div className="alert alert-info" style={fontSizeStyle}>
+        <div className="d-flex align-items-center">
+          <i className="bi bi-info-circle-fill me-2"></i>
+          <span>No topics found. Try adjusting your search or filters.</span>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="bg-white p-4 rounded shadow">
-      <table style={fontSizeStyle} className="topic-table w-full mt-6 border-collapse">
-        <thead>
-          <tr className="bg-gray-700 text-white">
-            {/* --- INSERTION: Checkbox for "Select All" --- */}
-            <th className="p-2 border">
-              <input
-                type="checkbox"
-                className="form-checkbox h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
-                aria-label="Select all topics on this page"
-                checked={areAllCurrentTopicsSelected}
-                onChange={handleSelectAllChange}
-                disabled={!topics || topics.length === 0}
-              />
+      <div className="table-responsive">
+        <table style={fontSizeStyle} className="table table-striped table-bordered table-hover">
+        <thead className="table-dark">
+          <tr>
+            {/* Checkbox for "Select All" */}
+            <th style={{ width: '50px' }}>
+              <div className="form-check d-flex justify-content-center">
+                <input
+                  type="checkbox"
+                  className="form-check-input"
+                  aria-label="Select all topics on this page"
+                  checked={areAllCurrentTopicsSelected}
+                  onChange={handleSelectAllChange}
+                  disabled={!topics || topics.length === 0}
+                />
+              </div>
             </th>
-            {/* --- END INSERTION --- */}
-            <th className="p-2 border cursor-pointer" onClick={() => onSort("topicCode")}>
-              Topic Code {sortColumn === "topicCode" && (sortDirection === "asc" ? "↑" : "↓")}
+            
+            {/* Sortable columns */}
+            <th onClick={() => onSort("topicCode")} className="cursor-pointer">
+              Topic Code
+              {sortColumn === "topicCode" && (
+                <i className={`ms-1 bi bi-caret-${sortDirection === "asc" ? "up" : "down"}-fill`}></i>
+              )}
             </th>
-            <th className="p-2 border cursor-pointer" onClick={() => onSort("topicTitle")}>
-              Title {sortColumn === "topicTitle" && (sortDirection === "asc" ? "↑" : "↓")}
+            
+            <th onClick={() => onSort("topicTitle")} className="cursor-pointer">
+              Topic Title
+              {sortColumn === "topicTitle" && (
+                <i className={`ms-1 bi bi-caret-${sortDirection === "asc" ? "up" : "down"}-fill`}></i>
+              )}
             </th>
-            <th className="p-2 border">Phase</th>
-            <th className="p-2 border cursor-pointer" onClick={() => onSort("component")}>
-              Component {sortColumn === "component" && (sortDirection === "asc" ? "↑" : "↓")}
+            
+            <th>Phase</th>
+            
+            <th onClick={() => onSort("component")} className="cursor-pointer">
+              Component
+              {sortColumn === "component" && (
+                <i className={`ms-1 bi bi-caret-${sortDirection === "asc" ? "up" : "down"}-fill`}></i>
+              )}
             </th>
-            <th className="p-2 border cursor-pointer" onClick={() => onSort("program")}>
-              Program {sortColumn === "program" && (sortDirection === "asc" ? "↑" : "↓")}
+            
+            <th onClick={() => onSort("program")} className="cursor-pointer">
+              Program
+              {sortColumn === "program" && (
+                <i className={`ms-1 bi bi-caret-${sortDirection === "asc" ? "up" : "down"}-fill`}></i>
+              )}
             </th>
-            <th className="p-2 border cursor-pointer" onClick={() => onSort("topicStatus")}>
-              Status {sortColumn === "topicStatus" && (sortDirection === "asc" ? "↑" : "↓")}
+            
+            <th onClick={() => onSort("topicStatus")} className="cursor-pointer">
+              Status
+              {sortColumn === "topicStatus" && (
+                <i className={`ms-1 bi bi-caret-${sortDirection === "asc" ? "up" : "down"}-fill`}></i>
+              )}
             </th>
-            <th className="p-2 border">Solicitation</th>
-            <th className="p-2 border">TPOC Name</th>
-            <th className="p-2 border">TPOC Email</th>
-            <th className="p-2 border">TPOC Phone</th>
+            
+            <th>Solicitation</th>
+            <th>TPOC Name</th>
+            <th>TPOC Email</th>
+            <th>TPOC Phone</th>
           </tr>
         </thead>
         <tbody>
           {topics.map((topic) => (
-            <tr key={topic.topicCode} className={`even:bg-blue-50 odd:bg-white ${selectedTopicCodes.has(topic.topicCode) ? 'bg-blue-200' : ''}`}> {/* Optional: highlight selected row */}
-              {/* --- INSERTION: Checkbox for individual row selection --- */}
-              <td className="p-2 border">
-                <input
-                  type="checkbox"
-                  className="form-checkbox h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
-                  aria-label={`Select topic ${topic.topicTitle}`}
-                  checked={selectedTopicCodes.has(topic.topicCode)}
-                  onChange={(e) => handleRowSelectChange(topic.topicCode, e.target.checked)}
-                />
+            <tr 
+              key={topic.topicCode} 
+              className={`${selectedTopicCodes.has(topic.topicCode) ? 'table-active' : ''}`}
+            >
+              {/* Checkbox for individual row selection */}
+              <td className="text-center">
+                <div className="form-check d-flex justify-content-center">
+                  <input
+                    type="checkbox"
+                    className="form-check-input"
+                    aria-label={`Select topic ${topic.topicTitle}`}
+                    checked={selectedTopicCodes.has(topic.topicCode)}
+                    onChange={(e) => handleRowSelectChange(topic.topicCode, e.target.checked)}
+                  />
+                </div>
               </td>
-              {/* --- END INSERTION --- */}
-              <td className="p-2 border">{topic.topicCode}</td>
-              <td className="p-2 border">{topic.topicTitle}</td>
-              <td className="p-2 border">
+              
+              <td className="text-nowrap">{topic.topicCode}</td>
+              <td>{topic.topicTitle}</td>
+              <td>
                 {(() => {
                   try {
                     // Ensure topic.phaseHierarchy is a string before parsing
                     const phaseHierarchyString = typeof topic.phaseHierarchy === 'string' ? topic.phaseHierarchy : null;
-                    if (!phaseHierarchyString) return "N/A";
+                    if (!phaseHierarchyString) return <span className="text-muted">N/A</span>;
 
                     const parsed = JSON.parse(phaseHierarchyString);
-                    return parsed?.config
-                      ?.map((phase: any) => phase.displayValue)
-                      .join(", ");
+                    const phases = parsed?.config?.map((phase: any) => phase.displayValue) || [];
+                    
+                    return phases.length > 0 ? (
+                      <div className="d-flex flex-wrap gap-1">
+                        {phases.map((phase: string, index: number) => (
+                          <span key={index} className="badge bg-primary">
+                            {phase}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-muted">N/A</span>
+                    );
                   } catch {
-                    return "N/A";
+                    return <span className="text-muted">N/A</span>;
                   }
                 })()}
               </td>
-              <td className="p-2 border">{topic.component}</td>
-              <td className="p-2 border">{topic.program}</td>
-              <td className="p-2 border">{topic.topicStatus}</td>
-              <td className="p-2 border">{topic.solicitationTitle}</td>
-              <td className="p-2 border">{topic.topicManagers?.[0]?.name || "N/A"}</td>
-              <td className="p-2 border">{topic.topicManagers?.[0]?.email || "N/A"}</td>
-              <td className="p-2 border">{topic.topicManagers?.[0]?.phone || "N/A"}</td>
+              <td>{topic.component || <span className="text-muted">N/A</span>}</td>
+              <td>{topic.program || <span className="text-muted">N/A</span>}</td>
+              <td>
+                {topic.topicStatus ? (
+                  <span className={`badge bg-${topic.topicStatus.toLowerCase() === 'open' ? 'success' : 'secondary'}`}>
+                    {topic.topicStatus}
+                  </span>
+                ) : (
+                  <span className="text-muted">N/A</span>
+                )}
+              </td>
+              <td>{topic.solicitationTitle || <span className="text-muted">N/A</span>}</td>
+              <td>{topic.topicManagers?.[0]?.name || <span className="text-muted">N/A</span>}</td>
+              <td>
+                {topic.topicManagers?.[0]?.email ? (
+                  <a href={`mailto:${topic.topicManagers[0].email}`} className="text-decoration-none">
+                    {topic.topicManagers[0].email}
+                  </a>
+                ) : (
+                  <span className="text-muted">N/A</span>
+                )}
+              </td>
+              <td>
+                {topic.topicManagers?.[0]?.phone ? (
+                  <a href={`tel:${topic.topicManagers[0].phone.replace(/[^\d+]/g, '')}`} className="text-decoration-none">
+                    {topic.topicManagers[0].phone}
+                  </a>
+                ) : (
+                  <span className="text-muted">N/A</span>
+                )}
+              </td>
             </tr>
           ))}
         </tbody>
-      </table>
+        </table>
+      </div>
     </div>
   );
 };
