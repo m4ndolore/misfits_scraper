@@ -93,7 +93,7 @@ const TopicsTable: React.FC<Props> = ({
 
   return (
     <div className="bg-white p-4 rounded shadow">
-      <table style={fontSizeStyle} className="w-full mt-6 text-black border-collapse">
+      <table style={fontSizeStyle} className="topic-table w-full mt-6 border-collapse">
         <thead>
           <tr className="bg-gray-700 text-white">
             {/* --- INSERTION: Checkbox for "Select All" --- */}
