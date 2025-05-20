@@ -1,5 +1,5 @@
 // src/App.tsx
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from "axios";
 import { FilterProvider, useFilterContext } from "./contexts/FilterContext";
 import { toSearchParam } from "./utils/filterUtils";
@@ -23,8 +23,56 @@ const AppContent = () => {
   const [filters, setFilters] = useState<Record<string, string[]>>({});
   const [appliedFilters, setAppliedFilters] = useState<Record<string, string[]>>({});
   const [selectedTopicCodes, setSelectedTopicCodes] = useState<Set<string>>(new Set());
+  const [selectedPdfIds, setSelectedPdfIds] = useState<Set<string>>(new Set());
   const [sortColumn, setSortColumn] = useState<keyof Topic | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  
+  const exportToCSV = useCallback(() => {
+    if (!topics || topics.length === 0) {
+      alert("No data to export");
+      return;
+    }
+
+    const headers = [
+      "Topic Code",
+      "Title",
+      "Phase",
+      "Component",
+      "Program",
+      "Status",
+      "Solicitation",
+      "TPOC Name",
+      "TPOC Email",
+      "TPOC Phone"
+    ];
+
+    const csvContent = [
+      headers.join(","),
+      ...topics.map(topic => {
+        return [
+          `"${topic.topicCode}"`,
+          `"${topic.topicTitle?.replace(/"/g, '""') || ''}"`,
+          `"${topic.phaseHierarchy || ''}"`,
+          `"${topic.component || ''}"`,
+          `"${topic.program || ''}"`,
+          `"${topic.topicStatus || ''}"`,
+          `"${topic.solicitationTitle || ''}"`,
+          `"${(topic.topicManagers?.[0]?.name || '').replace(/"/g, '""')}"`,
+          `"${topic.topicManagers?.[0]?.email || ''}"`,
+          `"${topic.topicManagers?.[0]?.phone || ''}"`
+        ].join(',');
+      })
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'topics_export.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }, [topics]);
 
   const fetchTopics = useCallback(async () => {
     try {
@@ -74,10 +122,30 @@ const AppContent = () => {
     fetchTopics();
   };
 
-  const handleSelectionChange = (selected: Set<string>) => {
+  const handleSelectionChange = useCallback((selected: Set<string>) => {
     setSelectedTopicCodes(selected);
-    // You can add any additional logic here when selection changes
-  };
+    
+    // Update PDF IDs based on selected topic codes
+    const ids = new Set(
+      topics
+        .filter((t) => selected.has(t.topicCode))
+        .map((t) => t.topicId)
+    );
+    setSelectedPdfIds(ids);
+  }, [topics]);
+  
+  const handleDownloadPdfs = useCallback(() => {
+    if (selectedPdfIds.size === 0) {
+      window.alert("Please select at least one topic to download its PDF.");
+      return;
+    }
+    
+    // Open each PDF in a new tab
+    selectedPdfIds.forEach((topicId) => {
+      const downloadUrl = `/api/topics/${topicId}/pdf`;
+      window.open(downloadUrl, "_blank");
+    });
+  }, [selectedPdfIds]);
 
   const handleSort = (column: keyof Topic) => {
     // If the same column is clicked, toggle the sort direction
@@ -97,21 +165,38 @@ const AppContent = () => {
   return (
     <div className="container-fluid p-0">      
       {/* Header */}
-      <header className="bg-primary text-white py-4">
+      <header className="bg-primary text-white py-3">
         <div className="container">
-          <div className="d-flex justify-content-between align-items-start">
-            <div className="flex-grow-1">
-              <h4 className="display-7 fw-bold mb-2">
-                Misfit powered by <br />
-                <span className="text-warning">The Merge Combinator</span>
+          <div className="row align-items-center">
+            <div className="col-md-6 text-center text-md-start mb-3 mb-md-0">
+              <h4 className="h5 fw-bold mb-1">
+                Misfit powered by <span className="text-warning">The Merge Combinator</span>
               </h4>
-              <h2 className="h1 fw-light mb-2 text-center">
-                The GCH SIBR/STTR Wizard
-              </h2>
+              <h1 className="h3 fw-light mb-0">The GCH SIBR/STTR Wizard</h1>
             </div>
-            <div className="d-flex flex-column align-items-end">
-              <FontSizeToggle currentSize={fontSize} onChange={setFontSize} />
-              <span className="h4 text-black">Toggle font size</span>
+            <div className="col-md-6">
+              <div className="d-flex justify-content-center justify-content-md-end align-items-center flex-wrap gap-2">
+                <button
+                  onClick={exportToCSV}
+                  className="btn btn-warning btn-sm"
+                >
+                  <i className="bi bi-file-earmark-spreadsheet me-1"></i> Export CSV
+                </button>
+                <button
+                  onClick={handleDownloadPdfs}
+                  disabled={selectedPdfIds.size === 0}
+                  className="btn btn-success btn-sm"
+                >
+                  <i className="bi bi-file-earmark-pdf me-1"></i> PDFs ({selectedPdfIds.size})
+                </button>
+                <div className="d-flex align-items-center ms-2">
+                  <div className="vr me-2" style={{height: '24px'}}></div>
+                  <div className="d-flex flex-column align-items-center">
+                    <FontSizeToggle currentSize={fontSize} onChange={setFontSize} />
+                    <span className="text-white-50 small">Font Size</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
