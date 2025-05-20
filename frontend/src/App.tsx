@@ -96,82 +96,88 @@ const AppContent = () => {
 
   return (
     <div>
-    {/* Header */}
-    <header className="relative px-6 py-6 bg-[#1e3a5f] min-h-[150px]">
-      <div className="flex justify-between items-start w-full">
-        <div className="flex-1">
-          <h1 className="text-4xl font-bold leading-tight !text-white">
-            Misfit powered by <br />
-            <span className="!text-yellow-400">The Merge Combinator</span>
-          </h1>
-          <h1 className="text-xl mt-2 font-light !text-white">
-            The GCH SIBR/STTR Wizard
-          </h1>
-          <h1 className="text-6xl text-red-600">Tailwind is Working!</h1>
-
-        </div>
-        <div className="flex flex-col items-end space-y-2">
-          <FontSizeToggle currentSize={fontSize} onChange={setFontSize} />
-          <span className="text-base font-medium !text-white">Toggle font size</span>
-        </div>
+      {/* Tailwind Test */}
+      <div className="p-4 bg-blue-500 text-white rounded-lg shadow-lg m-4">
+        <h2 className="text-xl font-bold">Tailwind CSS Test</h2>
+        <p>If this is styled, Tailwind is working!</p>
       </div>
-    </header>
+      
+      {/* Header */}
+      <header className="relative px-6 py-6 bg-[#1e3a5f] min-h-[150px] text-white">
+        <div className="flex justify-between items-start w-full">
+          <div className="flex-1">
+            <h1 className="text-4xl font-bold leading-tight">
+              Misfit powered by <br />
+              <span className="text-yellow-400">The Merge Combinator</span>
+            </h1>
+            <h1 className="text-xl mt-2 font-light">
+              The GCH SIBR/STTR Wizard
+            </h1>
+            <h1 className="text-6xl text-red-600">Tailwind is Working!</h1>
 
-    {/* Main Content */}
-    <main className="p-4 space-y-6">
-      {/* Search Form */}
-      <form onSubmit={handleSearch}>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search topics..."
-            className="flex-1 p-2 border rounded text-black"
+          </div>
+          <div className="flex flex-col items-end space-y-2">
+            <FontSizeToggle currentSize={fontSize} onChange={setFontSize} />
+            <span className="text-base font-medium !text-white">Toggle font size</span>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="p-4 space-y-6">
+        {/* Search Form */}
+        <form onSubmit={handleSearch}>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search topics..."
+              className="flex-1 p-2 border rounded text-black"
+            />
+            <button
+              type="submit"
+              className="bg-yellow-500 text-black px-4 py-2 rounded hover:bg-yellow-600"
+            >
+              Search
+            </button>
+          </div>
+        </form>
+
+        {/* Filter Panel */}
+        <FilterPanel
+          schema={schema}
+          selectedFilters={filters}
+          onFilterChange={(name: string, values: string[]) => {
+            setFilters(prev => ({ ...prev, [name]: values }));
+          }}
+          onApply={() => {
+            setAppliedFilters({ ...filters });
+            setPage(0);
+          }}
+          fontSize={fontSize}
+        />
+
+        {/* Results Table & Pagination */}
+        <div>
+          <TopicsTable
+            topics={topics}
+            onSelectionChange={handleSelectionChange}
+            fontSize={fontSize}
+            sortColumn={sortColumn}
+            sortDirection={sortDirection}
+            onSort={handleSort}
           />
-          <button
-            type="submit"
-            className="bg-yellow-500 text-black px-4 py-2 rounded hover:bg-yellow-600"
-          >
-            Search
-          </button>
+
+          <PaginationControls
+            currentPage={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            className="mt-4"
+            fontSize={fontSize}
+          />
         </div>
-      </form>
-
-      {/* Filter Panel */}
-      <FilterPanel
-        schema={schema}
-        selectedFilters={filters}
-        onFilterChange={(name: string, values: string[]) => {
-          setFilters(prev => ({ ...prev, [name]: values }));
-        }}
-        onApply={() => {
-          setAppliedFilters({ ...filters });
-          setPage(0);
-        }}
-        fontSize={fontSize}
-      />
-
-      {/* Results Table & Pagination */}
-      <div>
-        <TopicsTable
-          topics={topics}
-          onSelectionChange={handleSelectionChange}
-          fontSize={fontSize}
-          sortColumn={sortColumn}
-          sortDirection={sortDirection}
-          onSort={handleSort}
-        />
-
-        <PaginationControls
-          currentPage={page}
-          totalPages={totalPages}
-          onPageChange={setPage}
-          className="mt-4"
-          fontSize={fontSize}
-        />
-      </div>
-    </main>
+      </main>
     </div>
   );
 }
