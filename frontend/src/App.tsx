@@ -95,20 +95,24 @@ const AppContent = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#355e93] text-white">
+    <div>
     {/* Header */}
-    <header className="bg-[#1e3a5f] px-6 py-8 shadow-md text-white">
-      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
-        <div>
-          <h1 className="text-5xl font-extrabold leading-tight text-white">
-            Misfit powered by
-            <br />
-            <span className="text-yellow-400 font-bold">The Merge Combinator</span>
+    <header className="relative px-6 py-6 bg-[#1e3a5f] min-h-[150px]">
+      <div className="flex justify-between items-start w-full">
+        <div className="flex-1">
+          <h1 className="text-4xl font-bold leading-tight !text-white">
+            Misfit powered by <br />
+            <span className="!text-yellow-400">The Merge Combinator</span>
           </h1>
-          <h2 className="text-xl mt-2 text-gray-200 font-normal">The GCH SIBR/STTR Wizard</h2>
+          <h1 className="text-xl mt-2 font-light !text-white">
+            The GCH SIBR/STTR Wizard
+          </h1>
+          <h1 className="text-6xl text-red-600">Tailwind is Working!</h1>
+
         </div>
-        <div className="self-start md:self-center">
+        <div className="flex flex-col items-end space-y-2">
           <FontSizeToggle currentSize={fontSize} onChange={setFontSize} />
+          <span className="text-base font-medium !text-white">Toggle font size</span>
         </div>
       </div>
     </header>

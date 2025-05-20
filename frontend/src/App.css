@@ -1,35 +1,44 @@
-/* App.css */
+/* App.css - cleaned version */
+
 #root {
   width: 95%;
   margin: 0 auto;
-  padding: 0.5rem; /* Default padding for smaller screens */
+  padding: 0.5rem;
 }
 
-#root table tbody tr:nth-child(even) {
-  background-color: #f0f8ff !important; /* Light blue-gray */
-}
-
-#root table tbody tr:nth-child(odd) {
-  background-color: #ffffff !important; /* White */
-}
-#root table {
+/* Table styling scoped to a class to avoid global overrides */
+.topic-table {
   border-collapse: collapse;
   width: 100%;
 }
-#root table th,
-#root table td {
+.topic-table th,
+.topic-table td {
   padding: 0.5rem;
   text-align: left;
   border-bottom: 1px solid #ddd;
 }
-#root table th {
-  background-color: #f0f8ff !important; /* Light blue-gray */
+.topic-table th {
+  background-color: #f0f8ff;
   color: #333;
   font-weight: bold;
 }
-#root table td {
+.topic-table td {
   color: #555;
 }
-#root table tr:hover {
-  background-color: #e0f7fa !important; /* Light blue */
+.topic-table tbody tr:nth-child(even) {
+  background-color: #f0f8ff;
+}
+.topic-table tbody tr:nth-child(odd) {
+  background-color: #ffffff;
+}
+.topic-table tr:hover {
+  background-color: #e0f7fa;
+}
+
+.header-title {
+  font-size: 2.5rem; /* ~text-4xl */
+  font-weight: 700;  /* bold */
+  color: white;
+  line-height: 1.25;
+  margin-bottom: 0.5rem;
 }

@@ -7,24 +7,24 @@ interface FontSizeToggleProps {
 
 const FontSizeToggle: React.FC<FontSizeToggleProps> = ({ currentSize, onChange }) => {
   return (
-    <div className="flex gap-2 justify-center mb-4">
+    <div className="flex gap-3 justify-end">
       <button
-        className={`px-4 py-2 rounded ${currentSize === "small" ? "bg-yellow-600 text-white" : "bg-gray-700 text-yellow-300"}`}
+        className={`appearance-none border-none px-4 py-2 rounded-md text-lg ${currentSize === "small" ? "bg-yellow-600 text-white" : "bg-gray-700 text-yellow-300 hover:bg-gray-600"}`}
         onClick={() => onChange("small")}
       >
-        Small Font
+        Small
       </button>
       <button
-        className={`px-4 py-2 rounded ${currentSize === "medium" ? "bg-yellow-600 text-white" : "bg-gray-700 text-yellow-300"}`}
+        className={`appearance-none border-none px-4 py-2 rounded-md text-lg ${currentSize === "medium" ? "bg-yellow-600 text-white" : "bg-gray-700 text-yellow-300 hover:bg-gray-600"}`}
         onClick={() => onChange("medium")}
       >
-        Medium Font
+        Medium
       </button>
       <button
-        className={`px-4 py-2 rounded ${currentSize === "large" ? "bg-yellow-600 text-white" : "bg-gray-700 text-yellow-300"}`}
+        className={`appearance-none border-none px-4 py-2 rounded-md text-lg ${currentSize === "large" ? "bg-yellow-600 text-white" : "bg-gray-700 text-yellow-300 hover:bg-gray-600"}`}
         onClick={() => onChange("large")}
       >
-        Large Font
+        Large
       </button>
     </div>
   );
