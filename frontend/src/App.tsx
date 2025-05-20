@@ -9,9 +9,30 @@ import PaginationControls from "./components/PaginationControls";
 import FilterPanel from "./components/FilterPanel";
 import FontSizeToggle from "./components/FontSizeToggle";
 import { FontSize } from "./types/FontSize";
-import "./App.css";
+
+// Test component to verify Bootstrap is working
+const BootstrapTest = () => (
+  <div className="container mt-4">
+    <div className="card" style={{ maxWidth: '24rem', margin: '0 auto' }}>
+      <div className="card-body">
+        <div className="d-flex align-items-center">
+          <div className="me-3">
+            <div className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style={{ width: '48px', height: '48px' }}>
+              <span className="fw-bold">BS</span>
+            </div>
+          </div>
+          <div>
+            <h5 className="card-title mb-1">Bootstrap</h5>
+            <p className="card-text text-muted mb-0">You have a new message!</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
 
 // Main App component
+
 const AppContent = () => {
   const { schema, isLoading } = useFilterContext();
   const [searchTerm, setSearchTerm] = useState('');
@@ -91,53 +112,50 @@ const AppContent = () => {
   };
 
   if (isLoading) {
-    return <div>Loading filters...</div>;
+    return <div className="text-center p-5">Loading filters...</div>;
   }
 
   return (
-    <div>
-      {/* Tailwind Test */}
-      <div className="p-4 bg-blue-500 text-white rounded-lg shadow-lg m-4">
-        <h2 className="text-xl font-bold">Tailwind CSS Test</h2>
-        <p>If this is styled, Tailwind is working!</p>
-      </div>
+    <div className="container-fluid p-0">
+      <BootstrapTest />
       
       {/* Header */}
-      <header className="relative px-6 py-6 bg-[#1e3a5f] min-h-[150px] text-white">
-        <div className="flex justify-between items-start w-full">
-          <div className="flex-1">
-            <h1 className="text-4xl font-bold leading-tight">
-              Misfit powered by <br />
-              <span className="text-yellow-400">The Merge Combinator</span>
-            </h1>
-            <h1 className="text-xl mt-2 font-light">
-              The GCH SIBR/STTR Wizard
-            </h1>
-            <h1 className="text-6xl text-red-600">Tailwind is Working!</h1>
-
-          </div>
-          <div className="flex flex-col items-end space-y-2">
-            <FontSizeToggle currentSize={fontSize} onChange={setFontSize} />
-            <span className="text-base font-medium !text-white">Toggle font size</span>
+      <header className="bg-primary text-white py-4">
+        <div className="container">
+          <div className="d-flex justify-content-between align-items-start">
+            <div className="flex-grow-1">
+              <h1 className="display-5 fw-bold mb-2">
+                Misfit powered by <br />
+                <span className="text-warning">The Merge Combinator</span>
+              </h1>
+              <h2 className="h4 fw-light mb-3">
+                The GCH SIBR/STTR Wizard
+              </h2>
+              <h3 className="display-6 text-danger">Bootstrap is Working!</h3>
+            </div>
+            <div className="d-flex flex-column align-items-end">
+              <FontSizeToggle currentSize={fontSize} onChange={setFontSize} />
+              <span className="text-white">Toggle font size</span>
+            </div>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="p-4 space-y-6">
+      <main className="container py-4">
         {/* Search Form */}
-        <form onSubmit={handleSearch}>
-          <div className="flex gap-2">
+        <form onSubmit={handleSearch} className="mb-4">
+          <div className="input-group">
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search topics..."
-              className="flex-1 p-2 border rounded text-black"
+              className="form-control"
             />
             <button
               type="submit"
-              className="bg-yellow-500 text-black px-4 py-2 rounded hover:bg-yellow-600"
+              className="btn btn-warning"
             >
               Search
             </button>
@@ -159,7 +177,7 @@ const AppContent = () => {
         />
 
         {/* Results Table & Pagination */}
-        <div>
+        <div className="mt-4">
           <TopicsTable
             topics={topics}
             onSelectionChange={handleSelectionChange}
