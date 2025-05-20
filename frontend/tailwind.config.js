@@ -1,16 +1,25 @@
-import scrollbar from "tailwind-scrollbar";
-
-export default {
-  content: ["./src/**/*.{js,jsx,ts,tsx}"], // Ensure all your files are included
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
   theme: {
     extend: {
       fontSize: {
-        sm: "10pt", // Small font size
-        base: "14pt", // Base font size
-        lg: "18pt", // Large font size
+        sm: "0.875rem",
+        base: "1rem",
+        lg: "1.125rem",
+        xl: "1.25rem",
+        '2xl': '1.5rem',
+        '3xl': '1.875rem',
+        '4xl': '2.25rem',
+        '5xl': '3rem',
+        '6xl': '4rem',
       },
     },
   },
-  safelist: ["text-sm", "text-base", "text-lg"],
-  plugins: [scrollbar],
-};
+  plugins: [
+    require('tailwind-scrollbar'),
+  ],
+}

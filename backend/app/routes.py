@@ -78,7 +78,7 @@ async def search_topics(
     search_url = f"{DOD_BASE_URL}/search" # Main search endpoint
 
     headers = {
-        "User-Agent": "Mozilla/5.0 (compatible; MisfitOpportunityScraper/1.0)",
+        "User-Agent": "Mozilla/5.0 (compatible; TheMergeComibnatorMisfitOpportunityScraper/1.0)",
         "Accept": "application/json",
     }
 

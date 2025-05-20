@@ -8,9 +8,6 @@ export default defineConfig({
     react(),
     tailwindcss()
   ],
-  css: {
-    postcss: './postcss.config.js',
-  },
   server: {
     port: parseInt(process.env.VITE_PORT || '5173', 10), // Use VITE_PORT or default to 5173
     host: '0.0.0.0', // Allow external connections
