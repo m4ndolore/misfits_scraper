@@ -14,9 +14,9 @@ export const toSearchParam = (filters: {
     component: filters.components?.length ? filters.components : null,
     program: filters.programs?.length ? filters.programs : null,
     programYear: null,
-    solicitationCycleNames: [],
+    solicitationCycleNames: ["openTopics"],  // Required for TPOC data
     releaseNumbers: [],
-    topicReleaseStatus: filters.topicStatuses?.map(Number) || [],
+    topicReleaseStatus: [591, 592],  // Required for TPOC data
     modernizationPriorities: filters.modernizationPriorities?.map(Number) || [],
     technologyAreaIds: filters.technologyAreas?.map(Number) || [],
     sortBy: "finalTopicCode,asc",
