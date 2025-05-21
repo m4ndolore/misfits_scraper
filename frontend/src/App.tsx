@@ -29,49 +29,74 @@ const AppContent = () => {
   
   const exportToCSV = useCallback(() => {
     if (!topics || topics.length === 0) {
-      alert("No data to export");
+      alert("No topics available to export.");
       return;
     }
 
+    // Debug: Log the first topic's manager structure
+    if (topics.length > 0 && topics[0].topicManagers) {
+      console.log('First topic managers:', topics[0].topicManagers);
+      if (topics[0].topicManagers.length > 0) {
+        console.log('First manager object:', topics[0].topicManagers[0]);
+        console.log('Manager keys:', Object.keys(topics[0].topicManagers[0]));
+      }
+    }
+
     const headers = [
-      "Topic Code",
-      "Title",
-      "Phase",
-      "Component",
-      "Program",
-      "Status",
-      "Solicitation",
-      "TPOC Name",
-      "TPOC Email",
-      "TPOC Phone"
+      "Topic Code", "Topic ID", "Title", "Phase", "Component", "Program", 
+      "Status", "Solicitation", "TPOC Name", "TPOC Email", "TPOC Phone"
     ];
 
-    const csvContent = [
-      headers.join(","),
-      ...topics.map(topic => {
-        return [
-          `"${topic.topicCode}"`,
-          `"${topic.topicTitle?.replace(/"/g, '""') || ''}"`,
-          `"${topic.phaseHierarchy || ''}"`,
-          `"${topic.component || ''}"`,
-          `"${topic.program || ''}"`,
-          `"${topic.topicStatus || ''}"`,
-          `"${topic.solicitationTitle || ''}"`,
-          `"${(topic.topicManagers?.[0]?.name || '').replace(/"/g, '""')}"`,
-          `"${topic.topicManagers?.[0]?.email || ''}"`,
-          `"${topic.topicManagers?.[0]?.phone || ''}"`
-        ].join(',');
-      })
-    ].join('\n');
+    const sanitizeCell = (cellData: any): string => {
+      if (cellData === undefined || cellData === null) return '""';
+      const str = String(cellData);
+      return `"${str.replace(/"/g, '""')}"`;
+    };
 
+    const getManagerField = (manager: any, field: string): any => {
+      if (!manager) return '';
+      // Try different possible field names
+      return manager[field] || 
+             manager[field.toLowerCase()] || 
+             manager[field.toUpperCase()] || '';
+    };
+
+    const rows = topics.map((topic) => {
+      let phaseDisplay = "N/A";
+      try {
+        if (topic.phaseHierarchy && typeof topic.phaseHierarchy === 'string') {
+          const parsedPhase = JSON.parse(topic.phaseHierarchy);
+          phaseDisplay = parsedPhase?.config?.map((phase: any) => phase.displayValue).join(", ") || "N/A";
+        }
+      } catch { /* Keep N/A */ }
+
+      const manager = topic.topicManagers?.[0] || {};
+
+      return [
+        sanitizeCell(topic.topicCode),
+        sanitizeCell(topic.topicId),
+        sanitizeCell(topic.topicTitle),
+        sanitizeCell(phaseDisplay),
+        sanitizeCell(topic.component),
+        sanitizeCell(topic.program),
+        sanitizeCell(topic.topicStatus),
+        sanitizeCell(topic.solicitationTitle),
+        sanitizeCell(manager.name || manager.fullName || manager.displayName || ''),
+        sanitizeCell(manager.email || manager.emailAddress || ''),
+        sanitizeCell(manager.phone || manager.phoneNumber || ''),
+      ].join(",");
+    });
+
+    const csvContent = [headers.join(","), ...rows].join("\n");
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'topics_export.csv');
+    link.href = url;
+    link.setAttribute('download', 'topics.csv');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   }, [topics]);
 
   const fetchTopics = useCallback(async () => {
@@ -87,21 +112,29 @@ const AppContent = () => {
       const res = await axios.get<{ data: ApiTopicForFetch[], total: number }>(url);
       const apiTopics = res.data.data || [];
       
-      console.log('API Response:', res.data); // Debug log
+      // Debug: Log the first API topic to see its structure
+      if (apiTopics.length > 0) {
+        console.log('First API topic raw data:', JSON.parse(JSON.stringify(apiTopics[0])));
+      }
       
-      const transformedTopics: Topic[] = apiTopics.map(topic => ({
-        topicCode: topic.topicCode,
-        topicId: topic.topicId,
-        topicTitle: topic.topicTitle || "N/A",
-        phaseHierarchy: topic.phaseHierarchy || "",
-        component: topic.component || "N/A",
-        program: topic.program || "N/A",
-        topicStatus: topic.topicStatus || "N/A",
-        solicitationTitle: topic.solicitationTitle || "N/A",
-        topicManagers: topic.topicManagers || [],
-      }));
+      const transformedTopics: Topic[] = apiTopics.map(topic => {
+        // Debug: Log manager data before transformation
+        console.log('Topic managers before transform:', topic.topicManagers);
+        
+        return {
+          topicCode: topic.topicCode,
+          topicId: topic.topicId,
+          topicTitle: topic.topicTitle || "N/A",
+          phaseHierarchy: topic.phaseHierarchy || "",
+          component: topic.component || "N/A",
+          program: topic.program || "N/A",
+          topicStatus: topic.topicStatus || "N/A",
+          solicitationTitle: topic.solicitationTitle || "N/A",
+          topicManagers: topic.topicManagers || [],
+        };
+      });
 
-      console.log('Transformed Topics:', transformedTopics); // Debug log
+      console.log('Transformed Topics:', transformedTopics);
       
       setTopics(transformedTopics);
       setTotalPages(Math.ceil((res.data.total || 0) / rowsPerPage));
@@ -134,17 +167,72 @@ const AppContent = () => {
     setSelectedPdfIds(ids);
   }, [topics]);
   
-  const handleDownloadPdfs = useCallback(() => {
+  const handleDownloadPdfs = useCallback(async () => {
     if (selectedPdfIds.size === 0) {
       window.alert("Please select at least one topic to download its PDF.");
       return;
     }
     
-    // Open each PDF in a new tab
-    selectedPdfIds.forEach((topicId) => {
-      const downloadUrl = `/api/topics/${topicId}/pdf`;
-      window.open(downloadUrl, "_blank");
-    });
+    try {
+      // Create a link element for downloading
+      const link = document.createElement('a');
+      link.style.display = 'none';
+      document.body.appendChild(link);
+
+      // Function to trigger download for a single PDF
+      const downloadPdf = async (topicId: string, index: number) => {
+        try {
+          // Use the correct backend endpoint
+          const response = await fetch(`/api/download_pdf/${topicId}`);
+          
+          if (!response.ok) {
+            throw new Error(`Failed to download PDF for topic ${topicId}`);
+          }
+          
+          // Get the PDF blob
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          
+          // Set up the download
+          link.href = url;
+          link.download = `topic_${topicId}.pdf`;
+          
+          // Trigger the download
+          if (index === 0) {
+            // For the first PDF, trigger immediately
+            link.click();
+          } else {
+            // For subsequent PDFs, use a small delay to avoid browser popup blocking
+            setTimeout(() => link.click(), 100 * index);
+          }
+          
+          // Clean up
+          setTimeout(() => {
+            window.URL.revokeObjectURL(url);
+          }, 100);
+          
+        } catch (error) {
+          console.error(`Error downloading PDF for topic ${topicId}:`, error);
+          window.alert(`Failed to download PDF for topic ${topicId}. Please try again.`);
+        }
+      };
+
+      // Download PDFs one by one
+      let index = 0;
+      for (const topicId of selectedPdfIds) {
+        await downloadPdf(topicId, index);
+        index++;
+      }
+      
+      // Clean up the link element
+      setTimeout(() => {
+        document.body.removeChild(link);
+      }, 1000);
+      
+    } catch (error) {
+      console.error('Error in PDF download process:', error);
+      window.alert('An error occurred while downloading PDFs. Please try again.');
+    }
   }, [selectedPdfIds]);
 
   const handleSort = (column: keyof Topic) => {
