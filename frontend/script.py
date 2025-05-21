@@ -1,48 +1,54 @@
 from playwright.sync_api import sync_playwright
 import os
+import argparse
+import time
 
-user_data_dir = os.path.expanduser("~/.sbir-session")  # Preserves your login
+user_data_dir = os.path.expanduser("~/.sbir-session")
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--topic', required=True, help='Topic Code (e.g., A254-016)')
+args = parser.parse_args()
+topic_code = args.topic
+
 
 def run():
     with sync_playwright() as p:
         browser = p.chromium.launch_persistent_context(user_data_dir=user_data_dir, headless=False)
         page = browser.pages[0] if browser.pages else browser.new_page()
 
-        # 1. Navigate to main site
-        print("🔄 Navigating to topics page...")
+        print("🔄 Navigating to topics search page...")
         page.goto("https://www.dodsbirsttr.mil/topics-app/", timeout=60000)
+        page.wait_for_selector('input[aria-label="Search"]', timeout=10000)
+
+        print(f"🔍 Searching for topic: {topic_code}...")
+        page.fill('input[aria-label="Search"]', topic_code)
+        page.click('#searchButton')
+        page.wait_for_timeout(3000)  # Wait briefly for results to populate
+
+        print("🖱️ Clicking first topic result...")
+        topic_locator = page.locator(".topic-number-status", has_text=topic_code)
+        if topic_locator.count() == 0:
+            print("❌ Topic not found in search results.")
+            browser.close()
+            return
+
+        topic_locator.first.click()
         page.wait_for_load_state("networkidle")
+        page.wait_for_timeout(2000)
 
-        input("⏸️ Please manually click on a topic (e.g., AI for Anomaly Detection) and wait until the topic page loads, then press Enter here...")
-
-        # 2. Click the download button and intercept the download
-        print("⬇️ Looking for PDF download...")
-        with page.expect_download(timeout=10000) as download_info:
-            pdf_links = page.locator('a[title="Download PDF"]')
-            count = pdf_links.count()
-            print(f"🔎 Found {count} 'Download PDF' link(s)")
-
-            # Click the first visible one
-            for i in range(count):
-                link = pdf_links.nth(i)
-                if link.is_visible():
-                    print(f"✅ Clicking visible link #{i+1}")
-                    with page.expect_download(timeout=15000) as download_info:
-                        link.click()
-                    download = download_info.value
-                    filename = download.suggested_filename
-                    download.save_as(filename)
-                    print(f"✅ Saved: {filename}")
-                    break
-            else:
-                print("❌ No visible 'Download PDF' links found.")
-        
-        download = download_info.value
-        download_path = os.path.join(os.getcwd(), download.suggested_filename)
-        download.save_as(download_path)
-        print(f"✅ Download saved to {download_path}")
+        print("⬇️ Attempting PDF download...")
+        try:
+            with page.expect_download(timeout=10000) as download_info:
+                page.click('a[title="Download PDF"]', timeout=5000)
+            download = download_info.value
+            file_path = os.path.join(os.getcwd(), download.suggested_filename)
+            download.save_as(file_path)
+            print(f"✅ PDF saved to: {file_path}")
+        except Exception as e:
+            print(f"❌ PDF download failed: {e}")
 
         browser.close()
+
 
 if __name__ == "__main__":
     run()
