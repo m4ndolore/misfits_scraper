@@ -167,74 +167,80 @@ const AppContent = () => {
     setSelectedPdfIds(ids);
   }, [topics]);
   
-  const handleDownloadPdfs = useCallback(async () => {
+  // const handleDownloadPdfs = useCallback(async () => {
+  //   if (selectedPdfIds.size === 0) {
+  //     window.alert("Please select at least one topic to download its PDF.");
+  //     return;
+  //   }
+    
+  //   try {
+  //     // Create a link element for downloading
+  //     const link = document.createElement('a');
+  //     link.style.display = 'none';
+  //     document.body.appendChild(link);
+
+  //     // Function to trigger download for a single PDF
+  //     const downloadPdf = async (topicId: string, index: number) => {
+  //       try {
+  //         const downloadUrl = `https://www.dodsbirsttr.mil/topics/api/protected/topics/${topicId}/download/PDF`;
+      
+  //         const response = await fetch(downloadUrl);
+  //         if (!response.ok) {
+  //           throw new Error(`Failed to download PDF for topic ${topicId}`);
+  //         }
+      
+  //         const blob = await response.blob();
+  //         const url = window.URL.createObjectURL(blob);
+      
+  //         link.href = url;
+  //         link.download = `topic_${topicId}.pdf`;
+      
+  //         if (index === 0) {
+  //           link.click();
+  //         } else {
+  //           setTimeout(() => link.click(), 100 * index);
+  //         }
+      
+  //         setTimeout(() => {
+  //           window.URL.revokeObjectURL(url);
+  //         }, 100);
+  //       } catch (error) {
+  //         console.error(`Error downloading PDF for topic ${topicId}:`, error);
+  //         window.alert(`Failed to download PDF for topic ${topicId}. Please try again.`);
+  //       }
+  //     };
+      
+
+  //     // Download PDFs one by one
+  //     let index = 0;
+  //     for (const topicId of selectedPdfIds) {
+  //       await downloadPdf(topicId, index);
+  //       index++;
+  //     }
+      
+  //     // Clean up the link element
+  //     setTimeout(() => {
+  //       document.body.removeChild(link);
+  //     }, 1000);
+      
+  //   } catch (error) {
+  //     console.error('Error in PDF download process:', error);
+  //     window.alert('An error occurred while downloading PDFs. Please try again.');
+  //   }
+  // }, [selectedPdfIds]);
+
+  const handleDownloadPdfs = useCallback(() => {
     if (selectedPdfIds.size === 0) {
       window.alert("Please select at least one topic to download its PDF.");
       return;
     }
-    
-    try {
-      // Create a link element for downloading
-      const link = document.createElement('a');
-      link.style.display = 'none';
-      document.body.appendChild(link);
-
-      // Function to trigger download for a single PDF
-      const downloadPdf = async (topicId: string, index: number) => {
-        try {
-          // Use the correct backend endpoint
-          const response = await fetch(`/api/download_pdf/${topicId}`);
-          
-          if (!response.ok) {
-            throw new Error(`Failed to download PDF for topic ${topicId}`);
-          }
-          
-          // Get the PDF blob
-          const blob = await response.blob();
-          const url = window.URL.createObjectURL(blob);
-          
-          // Set up the download
-          link.href = url;
-          link.download = `topic_${topicId}.pdf`;
-          
-          // Trigger the download
-          if (index === 0) {
-            // For the first PDF, trigger immediately
-            link.click();
-          } else {
-            // For subsequent PDFs, use a small delay to avoid browser popup blocking
-            setTimeout(() => link.click(), 100 * index);
-          }
-          
-          // Clean up
-          setTimeout(() => {
-            window.URL.revokeObjectURL(url);
-          }, 100);
-          
-        } catch (error) {
-          console.error(`Error downloading PDF for topic ${topicId}:`, error);
-          window.alert(`Failed to download PDF for topic ${topicId}. Please try again.`);
-        }
-      };
-
-      // Download PDFs one by one
-      let index = 0;
-      for (const topicId of selectedPdfIds) {
-        await downloadPdf(topicId, index);
-        index++;
-      }
-      
-      // Clean up the link element
-      setTimeout(() => {
-        document.body.removeChild(link);
-      }, 1000);
-      
-    } catch (error) {
-      console.error('Error in PDF download process:', error);
-      window.alert('An error occurred while downloading PDFs. Please try again.');
+  
+    for (const topicId of selectedPdfIds) {
+      const downloadUrl = `https://www.dodsbirsttr.mil/topics/api/protected/topics/${topicId}/download/PDF`;
+      window.open(downloadUrl, '_blank');
     }
   }, [selectedPdfIds]);
-
+  
   const handleSort = (column: keyof Topic) => {
     // If the same column is clicked, toggle the sort direction
     if (sortColumn === column) {
