@@ -9,7 +9,7 @@ type Props = {
   fontSize: string;
   // INSERTION: Callback to notify parent component of selected topic codes
   onSelectionChange?: (selectedTopicCodes: Set<string>) => void;
-  onDownloadPdf?: (topicId: string) => void;
+  onDownloadPdf?: (topicCode: string) => void;
   downloadingPdf?: string | null;
 };
 
@@ -245,14 +245,14 @@ const TopicsTable: React.FC<Props> = ({
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
-                      onDownloadPdf(topic.topicId);
+                      onDownloadPdf(topic.topicCode);
                     }}
-                    disabled={downloadingPdf === topic.topicId}
+                    disabled={downloadingPdf === topic.topicCode}
                     className="btn btn-sm btn-outline-primary"
                     title="Download PDF"
                   >
                     <i className="bi bi-download"></i>
-                    {downloadingPdf === topic.topicId ? '...' : ''}
+                    {downloadingPdf === topic.topicCode ? '...' : ''}
                   </button>
                 </td>
               )}    
