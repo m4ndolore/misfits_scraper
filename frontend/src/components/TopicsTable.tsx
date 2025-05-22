@@ -9,6 +9,8 @@ type Props = {
   fontSize: string;
   // INSERTION: Callback to notify parent component of selected topic codes
   onSelectionChange?: (selectedTopicCodes: Set<string>) => void;
+  onDownloadPdf?: (topicId: string) => void;
+  downloadingPdf?: string | null;
 };
 
 const TopicsTable: React.FC<Props> = ({
@@ -17,8 +19,9 @@ const TopicsTable: React.FC<Props> = ({
   sortDirection,
   onSort,
   fontSize,
-  // INSERTION: Destructure the new prop
   onSelectionChange,
+  onDownloadPdf,
+  downloadingPdf,
 }) => {
   console.log('TopicsTable - topics prop:', topics); // Debug log
   
@@ -236,6 +239,23 @@ const TopicsTable: React.FC<Props> = ({
                   <span className="text-muted">N/A</span>
                 )}
               </td>
+              {/* Add this cell for the download button */}
+              {onDownloadPdf && (
+                <td className="text-center">
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDownloadPdf(topic.topicId);
+                    }}
+                    disabled={downloadingPdf === topic.topicId}
+                    className="btn btn-sm btn-outline-primary"
+                    title="Download PDF"
+                  >
+                    <i className="bi bi-download"></i>
+                    {downloadingPdf === topic.topicId ? '...' : ''}
+                  </button>
+                </td>
+              )}    
             </tr>
           ))}
         </tbody>

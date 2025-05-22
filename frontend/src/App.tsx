@@ -26,6 +26,7 @@ const AppContent = () => {
   const [selectedPdfIds, setSelectedPdfIds] = useState<Set<string>>(new Set());
   const [sortColumn, setSortColumn] = useState<keyof Topic | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [downloadingPdf, setDownloadingPdf] = useState<string | null>(null);
   
   const exportToCSV = useCallback(() => {
     if (!topics || topics.length === 0) {
@@ -229,18 +230,60 @@ const AppContent = () => {
   //   }
   // }, [selectedPdfIds]);
 
-  const handleDownloadPdfs = useCallback(() => {
-    if (selectedPdfIds.size === 0) {
-      window.alert("Please select at least one topic to download its PDF.");
-      return;
-    }
+  // const handleDownloadPdfs = useCallback(() => {
+  //   if (selectedPdfIds.size === 0) {
+  //     window.alert("Please select at least one topic to download its PDF.");
+  //     return;
+  //   }
   
-    for (const topicId of selectedPdfIds) {
-      const downloadUrl = `https://www.dodsbirsttr.mil/topics/api/protected/topics/${topicId}/download/PDF`;
-      window.open(downloadUrl, '_blank');
-    }
-  }, [selectedPdfIds]);
+  //   for (const topicId of selectedPdfIds) {
+  //     const downloadUrl = `https://www.dodsbirsttr.mil/topics/api/protected/topics/${topicId}/download/PDF`;
+  //     window.open(downloadUrl, '_blank');
+  //   }
+  // }, [selectedPdfIds]);
+
+  // In your React component
+  const handleDownloadPdf = async (topicId: string) => {
+    console.log('Attempting to download PDF for topic ID:', topicId); // Add this line
+    try {
+      setDownloadingPdf(topicId);
+      const response = await fetch('http://localhost:3001/api/download-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include', // Add this line
+        body: JSON.stringify({ topicId }),
+      });
   
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to download PDF');
+      }
+  
+      // The response will trigger a file download automatically
+      // due to the content-disposition header
+      // Handle the file download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `topic_${topicId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+    } catch (error: unknown) {  // Add type annotation here
+      console.error('Download error:', error);
+      // Show error to user
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+      alert(`Error downloading PDF: ${errorMessage}`);
+    } finally {
+      setDownloadingPdf(null);
+    }
+  };
+
   const handleSort = (column: keyof Topic) => {
     // If the same column is clicked, toggle the sort direction
     if (sortColumn === column) {
@@ -276,13 +319,21 @@ const AppContent = () => {
                 >
                   <i className="bi bi-file-earmark-spreadsheet me-1"></i> Export CSV
                 </button>
-                <button
+                {/* <button
                   onClick={handleDownloadPdfs}
                   disabled={selectedPdfIds.size === 0}
                   className="btn btn-success btn-sm"
                 >
                   <i className="bi bi-file-earmark-pdf me-1"></i> PDFs ({selectedPdfIds.size})
-                </button>
+                </button> */}
+                  {/* <button 
+                      onClick={() => handleDownloadPdf(topic.topicId)}
+                    disabled={downloadingPdf === topic.topicId}
+                    className="btn btn-success btn-sm"
+                  >
+                    <i className="bi bi-file-earmark-pdf me-1"></i>
+                    {downloadingPdf === topic.topicId ? 'Downloading...' : 'Download PDF'}
+                  </button> */}
                 <div className="d-flex align-items-center ms-2">
                   <div className="vr me-2" style={{height: '24px'}}></div>
                   <div className="d-flex flex-column align-items-center">
@@ -340,6 +391,8 @@ const AppContent = () => {
             sortColumn={sortColumn}
             sortDirection={sortDirection}
             onSort={handleSort}
+            onDownloadPdf={handleDownloadPdf}
+            downloadingPdf={downloadingPdf}
           />
 
           <PaginationControls
