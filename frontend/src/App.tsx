@@ -12,17 +12,29 @@ import { FontSize } from "./types/FontSize";
 
 // Main App component
 
-const AppContent = () => {
+interface AppContentProps {
+  onTopicSelect: (topicCode: string, isSelected: boolean) => void;
+  onSelectAll: (isSelected: boolean) => void;
+  selectedTopicCodes: Set<string>;
+  onTopicsChange: (topics: Topic[]) => void;
+  topics: Topic[];
+}
+
+const AppContent: React.FC<AppContentProps> = ({
+  onTopicSelect,
+  onSelectAll,
+  selectedTopicCodes, 
+  onTopicsChange,
+  topics,
+}: AppContentProps) => {
   const { schema, isLoading } = useFilterContext();
   const [searchTerm, setSearchTerm] = useState('');
-  const [topics, setTopics] = useState<Topic[]>([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(25);
   const [totalPages, setTotalPages] = useState(1);
   const [fontSize, setFontSize] = useState<FontSize>('medium'); // or 'small' or 'large'
   const [filters, setFilters] = useState<Record<string, string[]>>({});
   const [appliedFilters, setAppliedFilters] = useState<Record<string, string[]>>({});
-  const [selectedTopicCodes, setSelectedTopicCodes] = useState<Set<string>>(new Set());
   const [selectedPdfIds, setSelectedPdfIds] = useState<Set<string>>(new Set());
   const [sortColumn, setSortColumn] = useState<keyof Topic | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
@@ -82,9 +94,9 @@ const AppContent = () => {
         sanitizeCell(topic.program),
         sanitizeCell(topic.topicStatus),
         sanitizeCell(topic.solicitationTitle),
-        sanitizeCell(manager.name || manager.fullName || manager.displayName || ''),
-        sanitizeCell(manager.email || manager.emailAddress || ''),
-        sanitizeCell(manager.phone || manager.phoneNumber || ''),
+        sanitizeCell(manager.name || ''),
+        sanitizeCell(manager.email || ''),
+        sanitizeCell(manager.phone || ''),
       ].join(",");
     });
 
@@ -138,14 +150,14 @@ const AppContent = () => {
 
       console.log('Transformed Topics:', transformedTopics);
       
-      setTopics(transformedTopics);
+      onTopicsChange(transformedTopics);
       setTotalPages(Math.ceil((res.data.total || 0) / rowsPerPage));
     } catch (error) {
       console.error('Error fetching topics:', error);
-      setTopics([]);
+      onTopicsChange([]);
       setTotalPages(1);
     }
-  }, [appliedFilters, searchTerm, rowsPerPage, page]);
+  }, [appliedFilters, searchTerm, rowsPerPage, page, onTopicsChange]);
 
   useEffect(() => {
     fetchTopics();
@@ -158,7 +170,11 @@ const AppContent = () => {
   };
 
   const handleSelectionChange = useCallback((selected: Set<string>) => {
-    setSelectedTopicCodes(selected);
+    // Update selection state for each topic
+    topics.forEach(topic => {
+      const isSelected = selected.has(topic.topicCode);
+      onTopicSelect(topic.topicCode, isSelected);
+    });
     
     // Update PDF IDs based on selected topic codes
     const ids = new Set(
@@ -167,83 +183,8 @@ const AppContent = () => {
         .map((t) => t.topicId)
     );
     setSelectedPdfIds(ids);
-  }, [topics]);
-  
-  // const handleDownloadPdfs = useCallback(async () => {
-  //   if (selectedPdfIds.size === 0) {
-  //     window.alert("Please select at least one topic to download its PDF.");
-  //     return;
-  //   }
-    
-  //   try {
-  //     // Create a link element for downloading
-  //     const link = document.createElement('a');
-  //     link.style.display = 'none';
-  //     document.body.appendChild(link);
+  }, [topics, onTopicSelect]);
 
-  //     // Function to trigger download for a single PDF
-  //     const downloadPdf = async (topicId: string, index: number) => {
-  //       try {
-  //         const downloadUrl = `https://www.dodsbirsttr.mil/topics/api/protected/topics/${topicId}/download/PDF`;
-      
-  //         const response = await fetch(downloadUrl);
-  //         if (!response.ok) {
-  //           throw new Error(`Failed to download PDF for topic ${topicId}`);
-  //         }
-      
-  //         const blob = await response.blob();
-  //         const url = window.URL.createObjectURL(blob);
-      
-  //         link.href = url;
-  //         link.download = `topic_${topicId}.pdf`;
-      
-  //         if (index === 0) {
-  //           link.click();
-  //         } else {
-  //           setTimeout(() => link.click(), 100 * index);
-  //         }
-      
-  //         setTimeout(() => {
-  //           window.URL.revokeObjectURL(url);
-  //         }, 100);
-  //       } catch (error) {
-  //         console.error(`Error downloading PDF for topic ${topicId}:`, error);
-  //         window.alert(`Failed to download PDF for topic ${topicId}. Please try again.`);
-  //       }
-  //     };
-      
-
-  //     // Download PDFs one by one
-  //     let index = 0;
-  //     for (const topicId of selectedPdfIds) {
-  //       await downloadPdf(topicId, index);
-  //       index++;
-  //     }
-      
-  //     // Clean up the link element
-  //     setTimeout(() => {
-  //       document.body.removeChild(link);
-  //     }, 1000);
-      
-  //   } catch (error) {
-  //     console.error('Error in PDF download process:', error);
-  //     window.alert('An error occurred while downloading PDFs. Please try again.');
-  //   }
-  // }, [selectedPdfIds]);
-
-  // const handleDownloadPdfs = useCallback(() => {
-  //   if (selectedPdfIds.size === 0) {
-  //     window.alert("Please select at least one topic to download its PDF.");
-  //     return;
-  //   }
-  
-  //   for (const topicId of selectedPdfIds) {
-  //     const downloadUrl = `https://www.dodsbirsttr.mil/topics/api/protected/topics/${topicId}/download/PDF`;
-  //     window.open(downloadUrl, '_blank');
-  //   }
-  // }, [selectedPdfIds]);
-
-  // In your React component
   const handleDownloadPdf = async (topicCode: string) => {
     console.log('Attempting to download PDF for topic code:', topicCode);
     try {
@@ -382,14 +323,17 @@ const AppContent = () => {
         {/* Results Table & Pagination */}
         <div className="mt-4">
           <TopicsTable
-            topics={topics}
-            onSelectionChange={handleSelectionChange}
-            fontSize={fontSize}
-            sortColumn={sortColumn}
-            sortDirection={sortDirection}
-            onSort={handleSort}
-            onDownloadPdf={handleDownloadPdf}
-            downloadingPdf={downloadingPdf}
+              topics={topics}
+              selectedTopicCodes={selectedTopicCodes}  
+              onTopicSelect={onTopicSelect}       
+              onSelectAll={onSelectAll}           
+              fontSize={fontSize}
+              sortColumn={sortColumn}
+              sortDirection={sortDirection}
+              onSort={handleSort}
+              onSelectionChange={handleSelectionChange}
+              onDownloadPdf={handleDownloadPdf}
+              downloadingPdf={downloadingPdf}
           />
 
           <PaginationControls
@@ -406,10 +350,40 @@ const AppContent = () => {
 }
 
 // Wrap your app with FilterProvider
-const App = () => (
-  <FilterProvider>
-    <AppContent />
-  </FilterProvider>
-);
+const App = () => {
+  const [selectedTopicCodes, setSelectedTopicCodes] = useState<Set<string>>(new Set());
+  const [topics, setTopics] = useState<Topic[]>([]);
+
+  const handleTopicSelect = (topicCode: string, isSelected: boolean) => {
+    const newSelected = new Set(selectedTopicCodes);
+    if (isSelected) {
+      newSelected.add(topicCode);
+    } else {
+      newSelected.delete(topicCode);
+    }
+    setSelectedTopicCodes(newSelected);
+  };
+
+  const handleSelectAll = (isSelected: boolean) => {
+    if (isSelected && topics) {
+      const allCodes = new Set(topics.map(topic => topic.topicCode));
+      setSelectedTopicCodes(allCodes);
+    } else {
+      setSelectedTopicCodes(new Set());
+    }
+  };
+
+  return (
+    <FilterProvider>
+      <AppContent 
+        onTopicSelect={handleTopicSelect}
+        onSelectAll={handleSelectAll}
+        selectedTopicCodes={selectedTopicCodes}
+        onTopicsChange={setTopics}
+        topics={topics}
+      />
+    </FilterProvider>
+  );
+};
 
 export default App;

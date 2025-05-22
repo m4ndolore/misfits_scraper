@@ -1,12 +1,16 @@
 import * as React from "react";
-import { Topic } from "../types/Topic";
+import { Topic } from "../types";
+import TopicDetailModal from './TopicDetailModal';
 
 type Props = {
   topics?: Topic[];
+  selectedTopicCodes: Set<string>;
+  onTopicSelect: (topicCode: string, isSelected: boolean) => void;
+  onSelectAll: (isSelected: boolean) => void;
+  fontSize: string;
   sortColumn?: keyof Topic | null;
   sortDirection?: "asc" | "desc";
   onSort: (column: keyof Topic) => void;
-  fontSize: string;
   // INSERTION: Callback to notify parent component of selected topic codes
   onSelectionChange?: (selectedTopicCodes: Set<string>) => void;
   onDownloadPdf?: (topicCode: string) => void;
@@ -85,6 +89,19 @@ const TopicsTable: React.FC<Props> = ({
     }
   };
   // --- END INSERTION ---
+
+  const [selectedTopic, setSelectedTopic] = React.useState<Topic | null>(null);
+  const [isModalOpen, setIsModalOpen] = React.useState(false);
+
+  const handleRowClick = (topic: Topic) => {
+    setSelectedTopic(topic);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedTopic(null);
+  };
 
   if (!Array.isArray(topics) || topics.length === 0) {
     return (
@@ -176,6 +193,7 @@ const TopicsTable: React.FC<Props> = ({
             <tr 
               key={topic.topicCode} 
               className={`${selectedTopicCodes.has(topic.topicCode) ? 'table-active' : ''}`}
+              onClick={() => handleRowClick(topic)}
             >
               {/* Checkbox for individual row selection */}
               <td className="text-center">
@@ -191,7 +209,7 @@ const TopicsTable: React.FC<Props> = ({
               </td>
               
               <td className="text-nowrap">{topic.topicCode}</td>
-              <td>{topic.topicTitle}</td>
+              <td style={{ cursor: 'pointer', color: '#1976d2', textDecoration: 'underline' }}>{topic.topicTitle}</td>
               <td>{topic.numQuestions}</td>
               <td>
                 {(() => {
@@ -272,6 +290,11 @@ const TopicsTable: React.FC<Props> = ({
         </tbody>
         </table>
       </div>
+      <TopicDetailModal
+        open={isModalOpen}
+        onClose={handleCloseModal}
+        topic={selectedTopic}
+      />
     </div>
   );
 };
