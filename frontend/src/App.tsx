@@ -126,6 +126,7 @@ const AppContent = () => {
           topicCode: topic.topicCode,
           topicId: topic.topicId,
           topicTitle: topic.topicTitle || "N/A",
+          numQuestions: topic.noOfPublishedQuestions || 0,
           phaseHierarchy: topic.phaseHierarchy || "",
           component: topic.component || "N/A",
           program: topic.program || "N/A",

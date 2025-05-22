@@ -17,6 +17,7 @@ export interface Topic {
   topicStatus?: string;
   solicitationTitle?: string;
   topicManagers?: TopicManager[];
+  numQuestions?: number;
 
   // Add any other properties that your application uses for a Topic
   // For example, if you directly use these from the API or transform them:
