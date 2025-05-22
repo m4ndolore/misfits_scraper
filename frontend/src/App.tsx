@@ -243,17 +243,17 @@ const AppContent = () => {
   // }, [selectedPdfIds]);
 
   // In your React component
-  const handleDownloadPdf = async (topicId: string) => {
-    console.log('Attempting to download PDF for topic ID:', topicId); // Add this line
+  const handleDownloadPdf = async (topicCode: string) => {
+    console.log('Attempting to download PDF for topic code:', topicCode);
     try {
-      setDownloadingPdf(topicId);
+      setDownloadingPdf(topicCode);
       const response = await fetch('http://localhost:3001/api/download-pdf', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        credentials: 'include', // Add this line
-        body: JSON.stringify({ topicId }),
+        credentials: 'include',
+        body: JSON.stringify({ topicCode }),  // Using topicCode directly
       });
   
       if (!response.ok) {
@@ -261,22 +261,18 @@ const AppContent = () => {
         throw new Error(error.error || 'Failed to download PDF');
       }
   
-      // The response will trigger a file download automatically
-      // due to the content-disposition header
-      // Handle the file download
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `topic_${topicId}.pdf`;
+      a.download = `topic_${topicCode}.pdf`;  // Using topicCode in filename
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
-
-    } catch (error: unknown) {  // Add type annotation here
+  
+    } catch (error: unknown) {
       console.error('Download error:', error);
-      // Show error to user
       const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       alert(`Error downloading PDF: ${errorMessage}`);
     } finally {
