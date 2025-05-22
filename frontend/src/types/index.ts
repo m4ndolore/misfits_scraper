@@ -25,6 +25,7 @@ export interface FilterOption {
     topicManagers?: any[];
     technologyAreas?: string[];
     modernizationPriorities?: string[];
+    noOfPublishedQuestions?: number;  
   }
   
   export interface Topic {
@@ -37,4 +38,5 @@ export interface FilterOption {
     topicStatus: string;
     solicitationTitle: string;
     topicManagers: any[];
+    numQuestions?: number;
   }

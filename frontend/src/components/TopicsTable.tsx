@@ -132,6 +132,16 @@ const TopicsTable: React.FC<Props> = ({
               )}
             </th>
             
+            <th 
+              onClick={() => onSort("numQuestions")} 
+              className="cursor-pointer"
+            >
+              Questions
+              {sortColumn === "numQuestions" && (
+                <i className={`ms-1 bi bi-caret-${sortDirection === "asc" ? "up" : "down"}-fill`}></i>
+              )}
+            </th>
+            
             <th>Phase</th>
             
             <th onClick={() => onSort("component")} className="cursor-pointer">
@@ -182,6 +192,7 @@ const TopicsTable: React.FC<Props> = ({
               
               <td className="text-nowrap">{topic.topicCode}</td>
               <td>{topic.topicTitle}</td>
+              <td>{topic.numQuestions}</td>
               <td>
                 {(() => {
                   try {
