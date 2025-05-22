@@ -1,0 +1,7 @@
+Debugger listening on ws://127.0.0.1:59628/35ac62a6-eb1b-46be-9a0e-a4c9071fa0da
+For help, see: https://nodejs.org/en/docs/inspector
+Debugger attached.
+Server running on http://localhost:3001
+API endpoint: http://localhost:3001/api/download-pdf
+Health check: http://localhost:3001/api/health
+Waiting for the debugger to disconnect...
