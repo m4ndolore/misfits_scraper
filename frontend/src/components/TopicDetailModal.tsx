@@ -283,9 +283,46 @@ const TopicDetailModal: React.FC<TopicDetailModalProps> = ({ open, onClose, topi
     return temp.textContent || temp.innerText || '';
   }, []);
   
-  // Memoized version of cleanContent for answers
-  const cleanAnswerContent = useCallback((content: string): string => {
-    return cleanContent(content);
+  // Enhanced function to clean answer content and remove duplicate questions
+  const cleanAnswerContent = useCallback((answerContent: string, originalQuestion?: string): string => {
+    if (!answerContent) return '';
+    
+    let cleaned = cleanContent(answerContent);
+    
+    // If we have the original question, try to remove it from the answer
+    if (originalQuestion) {
+      const cleanQuestion = cleanContent(originalQuestion).trim();
+      
+      // Try different patterns to remove the question from the answer
+      const patterns = [
+        // Exact match at the beginning
+        new RegExp(`^${cleanQuestion.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*`, 'i'),
+        // Question followed by common separators
+        new RegExp(`^${cleanQuestion.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*[:\\-\\.]\\s*`, 'i'),
+        // Question in quotes or parentheses
+        new RegExp(`^["'\\(]?${cleanQuestion.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["'\\)]?\\s*[:\\-\\.]?\\s*`, 'i'),
+      ];
+      
+      for (const pattern of patterns) {
+        cleaned = cleaned.replace(pattern, '');
+      }
+    }
+    
+    // Remove common answer prefixes that might include the question
+    const answerPrefixes = [
+      /^Answer:\s*/i,
+      /^Response:\s*/i,
+      /^Reply:\s*/i,
+      /^A:\s*/i,
+      /^Question.*?Answer:\s*/i,
+      /^Q:.*?A:\s*/i,
+    ];
+    
+    for (const prefix of answerPrefixes) {
+      cleaned = cleaned.replace(prefix, '');
+    }
+    
+    return cleaned.trim();
   }, [cleanContent]);
   
   // Clean all text content
@@ -651,10 +688,10 @@ const TopicDetailModal: React.FC<TopicDetailModalProps> = ({ open, onClose, topi
                                       border: '1px solid rgba(0, 0, 0, 0.04)'
                                     }}
                                   >
-                                    {cleanAnswerContent(answer.answer).startsWith('https://www.youtube.com/embed/') ? (
+                                    {cleanAnswerContent(answer.answer, qa.question).startsWith('https://www.youtube.com/embed/') ? (
                                       <Box sx={{ mt: 2, position: 'relative', pb: '56.25%', height: 0, overflow: 'hidden' }}>
                                         <iframe
-                                          src={cleanAnswerContent(answer.answer)}
+                                          src={cleanAnswerContent(answer.answer, qa.question)}
                                           style={{
                                             position: 'absolute',
                                             top: 0,
@@ -684,7 +721,7 @@ const TopicDetailModal: React.FC<TopicDetailModalProps> = ({ open, onClose, topi
                                           }
                                         }}
                                       >
-                                        {cleanAnswerContent(answer.answer || 'No answer text available')}
+                                        {cleanAnswerContent(answer.answer, qa.question) || 'No answer text available'}
                                       </Typography>
                                     )}
                                   </Paper>
