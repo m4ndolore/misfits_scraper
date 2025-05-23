@@ -8,21 +8,20 @@ export interface TopicManager {
 }
 
 export interface FilterOption {
-<<<<<<< Updated upstream
     value: string;
     label: string;
-  }
+}
   
-  export interface FilterSchema {
+export interface FilterSchema {
     components: FilterOption[];
     programs: FilterOption[];
     topicStatuses: FilterOption[];
     modernizationPriorities: FilterOption[];
     technologyAreas: FilterOption[];
     solicitations: FilterOption[];
-  }
+}
   
-  export interface ApiTopicForFetch {
+export interface ApiTopicForFetch {
     topicCode: string;
     topicId: string;
     topicTitle?: string;
@@ -35,9 +34,9 @@ export interface FilterOption {
     technologyAreas?: string[];
     modernizationPriorities?: string[];
     noOfPublishedQuestions?: number;  
-  }
+}
   
-  export interface Topic {
+export interface Topic {
     topicCode: string;
     topicId: string;
     topicTitle: string;
@@ -48,8 +47,9 @@ export interface FilterOption {
     solicitationTitle: string;
     topicManagers: any[];
     numQuestions?: number;
-  }
-=======
+}
+
+export interface FilterOption {
   value: string;
   label: string;
 }
@@ -123,4 +123,3 @@ export interface Topic extends TopicDetail {
   numQuestions?: number;
   pdfUrl?: string;
 }
->>>>>>> Stashed changes

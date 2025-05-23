@@ -3,9 +3,10 @@ const { exec } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const cors = require('cors');
-
 const app = express();
 const PORT = 3001;
+const puppeteer = require('puppeteer');
+const path = require('path');
 
 // Enable CORS for all routes
 app.use((req, res, next) => {
