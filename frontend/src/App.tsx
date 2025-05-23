@@ -208,49 +208,29 @@ const AppContent: React.FC<AppContentProps> = ({
           : d
       ));
 
-      // Call your existing download endpoint
-      const response = await fetch('http://localhost:3001/api/download-pdf', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/pdf',
-        },
-        credentials: 'include',
-        mode: 'cors',
-        body: JSON.stringify({ topicCode }),
-      });
+      // Start both downloads simultaneously
+      const [officialPdfResult, detailsPdfResult] = await Promise.allSettled([
+        downloadOfficialPdf(topicCode),
+        downloadTopicDetailsPdf(topicCode)
+      ]);
 
-      if (!response.ok) {
-        let errorMessage = 'Failed to download PDF';
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.error || errorData.message || errorMessage;
-        } catch (e) {
-          console.error('Could not parse error response:', e);
-        }
-        throw new Error(errorMessage);
+      // Check results
+      let hasError = false;
+      let errorMessage = '';
+
+      if (officialPdfResult.status === 'rejected') {
+        hasError = true;
+        errorMessage += `Official PDF: ${officialPdfResult.reason}. `;
       }
 
-      const blob = await response.blob();
-      
-      if (!blob || blob.size === 0) {
-        throw new Error('Received empty PDF file');
+      if (detailsPdfResult.status === 'rejected') {
+        hasError = true;
+        errorMessage += `Details PDF: ${detailsPdfResult.reason}. `;
       }
 
-      // Create download link
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      const filename = `topic_${topicCode}.pdf`;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      
-      // Cleanup
-      setTimeout(() => {
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-      }, 100);
+      if (hasError) {
+        throw new Error(errorMessage.trim());
+      }
 
       // Update to completed status
       setDownloads(prev => prev.map(d => 
@@ -258,7 +238,7 @@ const AppContent: React.FC<AppContentProps> = ({
           ? { 
               ...d, 
               status: 'completed', 
-              filename: filename,
+              filename: `${topicCode}_official.pdf & ${topicCode}_details.pdf`,
               progress: 100 
             }
           : d
@@ -282,6 +262,131 @@ const AppContent: React.FC<AppContentProps> = ({
             }
           : d
       ));
+    }
+  };
+
+  // Download official PDF function
+  const downloadOfficialPdf = async (topicCode: string): Promise<void> => {
+    const response = await fetch('http://localhost:3001/api/download-pdf', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/pdf',
+      },
+      credentials: 'include',
+      mode: 'cors',
+      body: JSON.stringify({ topicCode }),
+    });
+
+    if (!response.ok) {
+      let errorMessage = 'Failed to download official PDF';
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorData.message || errorMessage;
+      } catch (e) {
+        console.error('Could not parse error response:', e);
+      }
+      throw new Error(errorMessage);
+    }
+
+    const blob = await response.blob();
+    
+    if (!blob || blob.size === 0) {
+      throw new Error('Received empty official PDF file');
+    }
+
+    // Create download link for official PDF
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `topic_${topicCode}_official.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    
+    // Cleanup
+    setTimeout(() => {
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    }, 100);
+  };
+
+  // Download topic details PDF function
+  const downloadTopicDetailsPdf = async (topicCode: string): Promise<void> => {
+    try {
+      // Find the topic in our current topics list
+      const topic = topics.find(t => t.topicCode === topicCode);
+      if (!topic) {
+        throw new Error(`Topic ${topicCode} not found in current results`);
+      }
+
+      // Fetch detailed topic information including Q&A
+      const [detailsResponse, qaResponse] = await Promise.allSettled([
+        axios.get(`https://www.dodsbirsttr.mil/topics/api/public/topics/${topic.topicId}/details`),
+        axios.get(`https://www.dodsbirsttr.mil/topics/api/public/topics/${topic.topicId}/questions`)
+      ]);
+
+      let topicDetails = topic;
+      let questions: any[] = [];
+
+      if (detailsResponse.status === 'fulfilled') {
+        topicDetails = { ...topic, ...detailsResponse.value.data };
+      }
+
+      if (qaResponse.status === 'fulfilled') {
+        questions = qaResponse.value.data || [];
+        // Sort by questionNo in ascending order
+        questions.sort((a, b) => (a.questionNo || 0) - (b.questionNo || 0));
+      }
+
+      // Send to backend to generate PDF
+      const response = await fetch('http://localhost:3001/api/generate-topic-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/pdf',
+        },
+        credentials: 'include',
+        mode: 'cors',
+        body: JSON.stringify({ 
+          topic: topicDetails,
+          questions: questions
+        }),
+      });
+
+      if (!response.ok) {
+        let errorMessage = 'Failed to generate topic details PDF';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch (e) {
+          console.error('Could not parse error response:', e);
+        }
+        throw new Error(errorMessage);
+      }
+
+      const blob = await response.blob();
+      
+      if (!blob || blob.size === 0) {
+        throw new Error('Received empty details PDF file');
+      }
+
+      // Create download link for details PDF
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `topic_${topicCode}_details.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      
+      // Cleanup
+      setTimeout(() => {
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      }, 100);
+
+    } catch (error) {
+      console.error('Error generating topic details PDF:', error);
+      throw new Error(`Failed to generate details PDF: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
