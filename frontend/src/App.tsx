@@ -10,20 +10,26 @@ import FilterPanel from "./components/FilterPanel";
 import FontSizeToggle from "./components/FontSizeToggle";
 import { FontSize } from "./types/FontSize";
 
-// Main App component
+// Download Manager Types
+interface Download {
+  id: string;
+  topicCode: string;
+  status: 'pending' | 'downloading' | 'completed' | 'error';
+  progress: number;
+  filename: string | null;
+  error: string | null;
+  startTime: Date;
+}
 
+// Main App component
 interface AppContentProps {
-  onTopicSelect: (topicCode: string, isSelected: boolean) => void;
-  onSelectAll: (isSelected: boolean) => void;
   selectedTopicCodes: Set<string>;
   onTopicsChange: (topics: Topic[]) => void;
   topics: Topic[];
 }
 
 const AppContent: React.FC<AppContentProps> = ({
-  onTopicSelect,
-  onSelectAll,
-  selectedTopicCodes, 
+  selectedTopicCodes: initialSelectedTopicCodes,
   onTopicsChange,
   topics,
 }: AppContentProps) => {
@@ -32,27 +38,25 @@ const AppContent: React.FC<AppContentProps> = ({
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(25);
   const [totalPages, setTotalPages] = useState(1);
-  const [fontSize, setFontSize] = useState<FontSize>('medium'); // or 'small' or 'large'
+  const [fontSize, setFontSize] = useState<FontSize>('medium');
   const [filters, setFilters] = useState<Record<string, string[]>>({});
   const [appliedFilters, setAppliedFilters] = useState<Record<string, string[]>>({});
   const [selectedPdfIds, setSelectedPdfIds] = useState<Set<string>>(new Set());
   const [sortColumn, setSortColumn] = useState<keyof Topic | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
-  const [downloadingPdf, setDownloadingPdf] = useState<string | null>(null);
   
+  // Local state for selected topics
+  const [selectedTopicCodes, setSelectedTopicCodes] = useState<Set<string>>(initialSelectedTopicCodes);
+  
+  // Download Manager State
+  const [downloads, setDownloads] = useState<Download[]>([]);
+
+  console.log('AppContent - selectedTopicCodes state:', selectedTopicCodes); // Debug log
+
   const exportToCSV = useCallback(() => {
     if (!topics || topics.length === 0) {
       alert("No topics available to export.");
       return;
-    }
-
-    // Debug: Log the first topic's manager structure
-    if (topics.length > 0 && topics[0].topicManagers) {
-      console.log('First topic managers:', topics[0].topicManagers);
-      if (topics[0].topicManagers.length > 0) {
-        console.log('First manager object:', topics[0].topicManagers[0]);
-        console.log('Manager keys:', Object.keys(topics[0].topicManagers[0]));
-      }
     }
 
     const headers = [
@@ -64,14 +68,6 @@ const AppContent: React.FC<AppContentProps> = ({
       if (cellData === undefined || cellData === null) return '""';
       const str = String(cellData);
       return `"${str.replace(/"/g, '""')}"`;
-    };
-
-    const getManagerField = (manager: any, field: string): any => {
-      if (!manager) return '';
-      // Try different possible field names
-      return manager[field] || 
-             manager[field.toLowerCase()] || 
-             manager[field.toUpperCase()] || '';
     };
 
     const rows = topics.map((topic) => {
@@ -125,31 +121,19 @@ const AppContent: React.FC<AppContentProps> = ({
       const res = await axios.get<{ data: ApiTopicForFetch[], total: number }>(url);
       const apiTopics = res.data.data || [];
       
-      // Debug: Log the first API topic to see its structure
-      if (apiTopics.length > 0) {
-        console.log('First API topic raw data:', JSON.parse(JSON.stringify(apiTopics[0])));
-      }
-      
-      const transformedTopics: Topic[] = apiTopics.map(topic => {
-        // Debug: Log manager data before transformation
-        console.log('Topic managers before transform:', topic.topicManagers);
-        
-        return {
-          topicCode: topic.topicCode,
-          topicId: topic.topicId,
-          topicTitle: topic.topicTitle || "N/A",
-          numQuestions: topic.noOfPublishedQuestions || 0,
-          phaseHierarchy: topic.phaseHierarchy || "",
-          component: topic.component || "N/A",
-          program: topic.program || "N/A",
-          topicStatus: topic.topicStatus || "N/A",
-          solicitationTitle: topic.solicitationTitle || "N/A",
-          topicManagers: topic.topicManagers || [],
-        };
-      });
+      const transformedTopics: Topic[] = apiTopics.map(topic => ({
+        topicCode: topic.topicCode,
+        topicId: topic.topicId,
+        topicTitle: topic.topicTitle || "N/A",
+        numQuestions: topic.noOfPublishedQuestions || 0,
+        phaseHierarchy: topic.phaseHierarchy || "",
+        component: topic.component || "N/A",
+        program: topic.program || "N/A",
+        topicStatus: topic.topicStatus || "N/A",
+        solicitationTitle: topic.solicitationTitle || "N/A",
+        topicManagers: topic.topicManagers || [],
+      }));
 
-      console.log('Transformed Topics:', transformedTopics);
-      
       onTopicsChange(transformedTopics);
       setTotalPages(Math.ceil((res.data.total || 0) / rowsPerPage));
     } catch (error) {
@@ -170,32 +154,61 @@ const AppContent: React.FC<AppContentProps> = ({
   };
 
   const handleSelectionChange = useCallback((selected: Set<string>) => {
-    // Update selection state for each topic
-    topics.forEach(topic => {
-      const isSelected = selected.has(topic.topicCode);
-      onTopicSelect(topic.topicCode, isSelected);
-    });
+    console.log('App - handleSelectionChange called with:', selected); // Debug log
+    // This is now the single source of truth for selection state
+    setSelectedTopicCodes(selected);
     
-    // Update PDF IDs based on selected topic codes
     const ids = new Set(
       topics
         .filter((t) => selected.has(t.topicCode))
         .map((t) => t.topicId)
     );
     setSelectedPdfIds(ids);
-  }, [topics, onTopicSelect]);
+  }, [topics]);
 
-  const handleDownloadPdf = async (topicCode: string) => {
-    console.log('Attempting to download PDF for topic code:', topicCode);
+  // Bulk Download Function
+  const handleBulkDownload = async () => {
+    if (selectedTopicCodes.size === 0) {
+      alert('Please select topics to download PDFs for.');
+      return;
+    }
+
+    const selectedTopics = Array.from(selectedTopicCodes);
+    
+    // Start downloads for all selected topics
+    for (const topicCode of selectedTopics) {
+      await new Promise(resolve => setTimeout(resolve, 500)); // Small delay between downloads
+      startDownload(topicCode);
+    }
+  };
+
+  // Download Manager Functions
+  const startDownload = async (topicCode: string) => {
+    const downloadId = Date.now().toString();
+    
+    console.log('Starting download for topic code:', topicCode);
+    
+    const newDownload: Download = {
+      id: downloadId,
+      topicCode,
+      status: 'pending',
+      progress: 0,
+      filename: null,
+      error: null,
+      startTime: new Date()
+    };
+    
+    setDownloads(prev => [newDownload, ...prev]);
+
     try {
-      setDownloadingPdf(topicCode);
-      
-      // First, verify the server is reachable
-      const healthCheck = await fetch('http://localhost:3001/api/health');
-      if (!healthCheck.ok) {
-        throw new Error('Unable to connect to the PDF generation service');
-      }
-      
+      // Update to downloading status
+      setDownloads(prev => prev.map(d => 
+        d.id === downloadId 
+          ? { ...d, status: 'downloading' }
+          : d
+      ));
+
+      // Call your existing download endpoint
       const response = await fetch('http://localhost:3001/api/download-pdf', {
         method: 'POST',
         headers: {
@@ -206,29 +219,30 @@ const AppContent: React.FC<AppContentProps> = ({
         mode: 'cors',
         body: JSON.stringify({ topicCode }),
       });
-  
+
       if (!response.ok) {
         let errorMessage = 'Failed to download PDF';
         try {
           const errorData = await response.json();
           errorMessage = errorData.error || errorData.message || errorMessage;
-          console.error('Server error details:', errorData);
         } catch (e) {
           console.error('Could not parse error response:', e);
         }
         throw new Error(errorMessage);
       }
-  
+
       const blob = await response.blob();
       
       if (!blob || blob.size === 0) {
         throw new Error('Received empty PDF file');
       }
-      
+
+      // Create download link
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `topic_${topicCode}.pdf`;
+      const filename = `topic_${topicCode}.pdf`;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       
@@ -237,25 +251,75 @@ const AppContent: React.FC<AppContentProps> = ({
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
       }, 100);
-  
+
+      // Update to completed status
+      setDownloads(prev => prev.map(d => 
+        d.id === downloadId 
+          ? { 
+              ...d, 
+              status: 'completed', 
+              filename: filename,
+              progress: 100 
+            }
+          : d
+      ));
+
+      // Auto-remove completed downloads after 10 seconds
+      setTimeout(() => {
+        setDownloads(prev => prev.filter(d => d.id !== downloadId));
+      }, 10000);
+
     } catch (error: unknown) {
       console.error('Download error:', error);
       const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-      alert(`Error downloading PDF: ${errorMessage}\n\nPlease make sure the backend server is running and accessible.`);
-    } finally {
-      setDownloadingPdf(null);
+      
+      setDownloads(prev => prev.map(d => 
+        d.id === downloadId 
+          ? { 
+              ...d, 
+              status: 'error', 
+              error: errorMessage 
+            }
+          : d
+      ));
     }
   };
 
+  const removeDownload = (downloadId: string) => {
+    setDownloads(prev => prev.filter(d => d.id !== downloadId));
+  };
+
+  const getStatusIcon = (status: Download['status']) => {
+    switch (status) {
+      case 'pending': return '⏳';
+      case 'downloading': return '⬇️';
+      case 'completed': return '✅';
+      case 'error': return '❌';
+      default: return '⏳';
+    }
+  };
+
+  const getElapsedTime = (startTime: Date) => {
+    const elapsed = Math.floor((new Date().getTime() - startTime.getTime()) / 1000);
+    return elapsed < 60 ? `${elapsed}s` : `${Math.floor(elapsed / 60)}m ${elapsed % 60}s`;
+  };
+
+  const handleDownloadPdf = (topicCode: string) => {
+    startDownload(topicCode);
+  };
+
   const handleSort = (column: keyof Topic) => {
-    // If the same column is clicked, toggle the sort direction
     if (sortColumn === column) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
     } else {
-      // New column, set to ascending by default
       setSortColumn(column);
       setSortDirection('asc');
     }
+  };
+
+  // Check if topic is currently downloading
+  const isTopicDownloading = (topicCode: string) => {
+    return downloads.some(d => d.topicCode === topicCode && d.status === 'downloading');
   };
 
   if (isLoading) {
@@ -264,8 +328,8 @@ const AppContent: React.FC<AppContentProps> = ({
 
   return (
     <div className="container-fluid p-0">      
-      {/* Header */}
-      <header className="bg-primary text-white py-3">
+      {/* Sticky Header - Fixed Bootstrap classes */}
+      <header className="bg-primary text-white py-3 position-sticky top-0" style={{ zIndex: 1030 }}>
         <div className="container">
           <div className="row align-items-center">
             <div className="col-md-6 text-center text-md-start mb-3 mb-md-0">
@@ -282,21 +346,18 @@ const AppContent: React.FC<AppContentProps> = ({
                 >
                   <i className="bi bi-file-earmark-spreadsheet me-1"></i> Export CSV
                 </button>
-                {/* <button
-                  onClick={handleDownloadPdfs}
-                  disabled={selectedPdfIds.size === 0}
-                  className="btn btn-success btn-sm"
+                
+                {/* Bulk Download Button */}
+                <button
+                  onClick={handleBulkDownload}
+                  disabled={selectedTopicCodes.size === 0}
+                  className={`btn btn-success btn-sm ${selectedTopicCodes.size === 0 ? 'opacity-50' : ''}`}
+                  title={selectedTopicCodes.size === 0 ? 'Select topics to download PDFs' : `Download PDFs for ${selectedTopicCodes.size} selected topics`}
                 >
-                  <i className="bi bi-file-earmark-pdf me-1"></i> PDFs ({selectedPdfIds.size})
-                </button> */}
-                  {/* <button 
-                      onClick={() => handleDownloadPdf(topic.topicId)}
-                    disabled={downloadingPdf === topic.topicId}
-                    className="btn btn-success btn-sm"
-                  >
-                    <i className="bi bi-file-earmark-pdf me-1"></i>
-                    {downloadingPdf === topic.topicId ? 'Downloading...' : 'Download PDF'}
-                  </button> */}
+                  <i className="bi bi-download me-1"></i>
+                  Bulk PDFs ({selectedTopicCodes.size})
+                </button>
+                
                 <div className="d-flex align-items-center ms-2">
                   <div className="vr me-2" style={{height: '24px'}}></div>
                   <div className="d-flex flex-column align-items-center">
@@ -345,20 +406,73 @@ const AppContent: React.FC<AppContentProps> = ({
           fontSize={fontSize}
         />
 
+        {/* Download Queue */}
+        {downloads.length > 0 && (
+          <div className="mb-4">
+            <div className="card">
+              <div className="card-header">
+                <h5 className="card-title mb-0">
+                  <i className="bi bi-download me-2"></i>
+                  Downloads ({downloads.length})
+                </h5>
+              </div>
+              <div className="card-body p-0">
+                {downloads.map((download) => (
+                  <div key={download.id} className="d-flex align-items-center justify-content-between p-3 border-bottom">
+                    <div className="d-flex align-items-center">
+                      <span className="me-2 fs-5">{getStatusIcon(download.status)}</span>
+                      <div>
+                        <div className="fw-medium">Topic {download.topicCode}</div>
+                        <div className="small text-muted">
+                          {download.status === 'pending' && 'Initializing download...'}
+                          {download.status === 'downloading' && `Downloading... (${getElapsedTime(download.startTime)})`}
+                          {download.status === 'completed' && `Completed - ${download.filename}`}
+                          {download.status === 'error' && `Error: ${download.error}`}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="d-flex align-items-center">
+                      {download.status === 'downloading' && (
+                        <div className="progress me-3" style={{width: '120px', height: '6px'}}>
+                          <div 
+                            className="progress-bar progress-bar-striped progress-bar-animated"
+                            style={{ width: '60%' }}
+                          ></div>
+                        </div>
+                      )}
+                      
+                      {(download.status === 'completed' || download.status === 'error') && (
+                        <button
+                          onClick={() => removeDownload(download.id)}
+                          className="btn btn-sm btn-outline-secondary"
+                        >
+                          <i className="bi bi-x"></i>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Results Table & Pagination */}
         <div className="mt-4">
           <TopicsTable
-              topics={topics}
-              selectedTopicCodes={selectedTopicCodes}  
-              onTopicSelect={onTopicSelect}       
-              onSelectAll={onSelectAll}           
-              fontSize={fontSize}
-              sortColumn={sortColumn}
-              sortDirection={sortDirection}
-              onSort={handleSort}
-              onSelectionChange={handleSelectionChange}
-              onDownloadPdf={handleDownloadPdf}
-              downloadingPdf={downloadingPdf}
+            topics={topics}
+            selectedTopicCodes={selectedTopicCodes}  
+            onTopicSelect={() => {}} // Dummy handler       
+            onSelectAll={() => {}} // Dummy handler           
+            fontSize={fontSize}
+            sortColumn={sortColumn}
+            sortDirection={sortDirection}
+            onSort={handleSort}
+            onSelectionChange={handleSelectionChange}
+            onDownloadPdf={handleDownloadPdf}
+            downloadingPdf={null} // We'll manage this through the downloads array now
+            isTopicDownloading={isTopicDownloading} // Pass this new function
           />
 
           <PaginationControls
@@ -370,6 +484,57 @@ const AppContent: React.FC<AppContentProps> = ({
           />
         </div>
       </main>
+
+      {/* Toast Notifications */}
+      <div className="position-fixed top-0 end-0 p-3" style={{zIndex: 1055}}>
+        {downloads
+          .filter(d => d.status === 'completed')
+          .slice(0, 3)
+          .map((download) => (
+            <div
+              key={download.id}
+              className="toast show mb-2"
+              role="alert"
+            >
+              <div className="toast-header bg-success text-white">
+                <i className="bi bi-check-circle-fill me-2"></i>
+                <strong className="me-auto">Download Complete</strong>
+                <button
+                  type="button"
+                  className="btn-close btn-close-white"
+                  onClick={() => removeDownload(download.id)}
+                ></button>
+              </div>
+              <div className="toast-body">
+                Topic {download.topicCode} downloaded successfully!
+              </div>
+            </div>
+          ))}
+
+        {downloads
+          .filter(d => d.status === 'error')
+          .slice(0, 2)
+          .map((download) => (
+            <div
+              key={download.id}
+              className="toast show mb-2"
+              role="alert"
+            >
+              <div className="toast-header bg-danger text-white">
+                <i className="bi bi-exclamation-triangle-fill me-2"></i>
+                <strong className="me-auto">Download Failed</strong>
+                <button
+                  type="button"
+                  className="btn-close btn-close-white"
+                  onClick={() => removeDownload(download.id)}
+                ></button>
+              </div>
+              <div className="toast-body">
+                {download.error}
+              </div>
+            </div>
+          ))}
+      </div>
     </div>
   );
 }
@@ -379,30 +544,9 @@ const App = () => {
   const [selectedTopicCodes, setSelectedTopicCodes] = useState<Set<string>>(new Set());
   const [topics, setTopics] = useState<Topic[]>([]);
 
-  const handleTopicSelect = (topicCode: string, isSelected: boolean) => {
-    const newSelected = new Set(selectedTopicCodes);
-    if (isSelected) {
-      newSelected.add(topicCode);
-    } else {
-      newSelected.delete(topicCode);
-    }
-    setSelectedTopicCodes(newSelected);
-  };
-
-  const handleSelectAll = (isSelected: boolean) => {
-    if (isSelected && topics) {
-      const allCodes = new Set(topics.map(topic => topic.topicCode));
-      setSelectedTopicCodes(allCodes);
-    } else {
-      setSelectedTopicCodes(new Set());
-    }
-  };
-
   return (
     <FilterProvider>
       <AppContent 
-        onTopicSelect={handleTopicSelect}
-        onSelectAll={handleSelectAll}
         selectedTopicCodes={selectedTopicCodes}
         onTopicsChange={setTopics}
         topics={topics}
