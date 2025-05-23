@@ -313,13 +313,18 @@ const AppContent: React.FC<AppContentProps> = ({
   // Download topic details PDF function
   const downloadTopicDetailsPdf = async (topicCode: string): Promise<void> => {
     try {
+      console.log('Starting details PDF generation for:', topicCode);
+      
       // Find the topic in our current topics list
       const topic = topics.find(t => t.topicCode === topicCode);
       if (!topic) {
         throw new Error(`Topic ${topicCode} not found in current results`);
       }
 
+      console.log('Found topic:', topic.topicTitle);
+
       // Fetch detailed topic information including Q&A
+      console.log('Fetching detailed topic data...');
       const [detailsResponse, qaResponse] = await Promise.allSettled([
         axios.get(`https://www.dodsbirsttr.mil/topics/api/public/topics/${topic.topicId}/details`),
         axios.get(`https://www.dodsbirsttr.mil/topics/api/public/topics/${topic.topicId}/questions`)
@@ -330,13 +335,23 @@ const AppContent: React.FC<AppContentProps> = ({
 
       if (detailsResponse.status === 'fulfilled') {
         topicDetails = { ...topic, ...detailsResponse.value.data };
+        console.log('Topic details fetched successfully');
+      } else {
+        console.warn('Failed to fetch topic details:', detailsResponse.reason);
       }
 
       if (qaResponse.status === 'fulfilled') {
         questions = qaResponse.value.data || [];
         // Sort by questionNo in ascending order
         questions.sort((a, b) => (a.questionNo || 0) - (b.questionNo || 0));
+        console.log('Q&A data fetched successfully, questions:', questions.length);
+      } else {
+        console.warn('Failed to fetch Q&A data:', qaResponse.reason);
       }
+
+      console.log('Sending data to PDF generator...');
+      console.log('Topic data keys:', Object.keys(topicDetails));
+      console.log('Questions count:', questions.length);
 
       // Send to backend to generate PDF
       const response = await fetch('http://localhost:3001/api/generate-topic-pdf', {
@@ -353,18 +368,28 @@ const AppContent: React.FC<AppContentProps> = ({
         }),
       });
 
+      console.log('PDF generator response status:', response.status);
+
       if (!response.ok) {
         let errorMessage = 'Failed to generate topic details PDF';
+        let errorDetails = null;
+        
         try {
           const errorData = await response.json();
-          errorMessage = errorData.error || errorData.message || errorMessage;
+          errorMessage = errorData.error || errorMessage;
+          errorDetails = errorData.details || errorData.stack || null;
+          console.error('PDF generation error details:', errorData);
         } catch (e) {
           console.error('Could not parse error response:', e);
+          const textResponse = await response.text();
+          console.error('Raw error response:', textResponse);
         }
-        throw new Error(errorMessage);
+        
+        throw new Error(`${errorMessage}${errorDetails ? ': ' + errorDetails : ''}`);
       }
 
       const blob = await response.blob();
+      console.log('PDF blob received, size:', blob.size);
       
       if (!blob || blob.size === 0) {
         throw new Error('Received empty details PDF file');
@@ -383,6 +408,8 @@ const AppContent: React.FC<AppContentProps> = ({
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
       }, 100);
+
+      console.log('Details PDF download initiated successfully');
 
     } catch (error) {
       console.error('Error generating topic details PDF:', error);
@@ -529,10 +556,10 @@ const AppContent: React.FC<AppContentProps> = ({
                       <div>
                         <div className="fw-medium">Topic {download.topicCode}</div>
                         <div className="small text-muted">
-                          {download.status === 'pending' && 'Initializing download...'}
-                          {download.status === 'downloading' && `Downloading... (${getElapsedTime(download.startTime)})`}
-                          {download.status === 'completed' && `Completed - ${download.filename}`}
-                          {download.status === 'error' && `Error: ${download.error}`}
+                          {download.status === 'pending' && 'Preparing downloads...'}
+                          {download.status === 'downloading' && `Downloading official PDF + details PDF... (${getElapsedTime(download.startTime)})`}
+                          {download.status === 'completed' && `✅ Both files downloaded: ${download.filename}`}
+                          {download.status === 'error' && `❌ Error: ${download.error}`}
                         </div>
                       </div>
                     </div>
@@ -611,7 +638,7 @@ const AppContent: React.FC<AppContentProps> = ({
                 ></button>
               </div>
               <div className="toast-body">
-                Topic {download.topicCode} downloaded successfully!
+                Topic {download.topicCode}: Official PDF + Details PDF downloaded successfully!
               </div>
             </div>
           ))}
