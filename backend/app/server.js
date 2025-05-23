@@ -7,22 +7,29 @@ const cors = require('cors');
 const app = express();
 const PORT = 3001;
 
+// Enable CORS for all routes
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', 'http://localhost:5174');
+  const allowedOrigins = ['http://localhost:5174', 'http://127.0.0.1:5174'];
+  const origin = req.headers.origin;
+  
+  if (allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+  }
+  
   res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
   res.header('Access-Control-Allow-Credentials', 'true');
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  
   next();
 });
 
 app.use(express.json());
 app.use(express.static('public'));
-app.use(cors({
-    origin: 'http://localhost:5174',
-    methods: ['GET', 'POST', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true
-  }));
 
 // Ensure downloads directory exists
 const downloadsDir = path.join(__dirname, 'downloads');
@@ -37,41 +44,65 @@ app.get('/api/health', (req, res) => {
 
 // PDF download endpoint
 app.post('/api/download-pdf', async (req, res) => {
+    console.log('Received download request with body:', req.body);
     const { topicCode } = req.body;
     
     if (!topicCode) {
+      console.error('No topicCode provided in request');
       return res.status(400).json({ error: 'Topic Code is required' });
     }
+
+    console.log(`Processing PDF generation for topic code: ${topicCode}`);
   
     try {
       const scriptPath = path.join(__dirname, '..', '..', 'frontend', 'script.py');
       console.log(`Using script at: ${scriptPath}`);
       
       if (!fs.existsSync(scriptPath)) {
-        console.error(`Script not found at path: ${scriptPath}`);
-        return res.status(500).json({ error: 'Python script not found' });
+        const errorMsg = `Script not found at path: ${scriptPath}`;
+        console.error(errorMsg);
+        return res.status(500).json({ 
+          error: 'Python script not found',
+          details: {
+            scriptPath,
+            currentDirectory: process.cwd(),
+            directoryContents: fs.readdirSync(path.dirname(scriptPath))
+          }
+        });
       }
       
       if (!fs.existsSync(downloadsDir)) {
         fs.mkdirSync(downloadsDir, { recursive: true });
       }
       
-      console.log(`Executing: python3 ${scriptPath} --topic ${topicCode}`);
-      const child = exec(`python3 ${scriptPath} --topic ${topicCode}`, { 
-        cwd: path.dirname(scriptPath)
+      const command = `python3 ${scriptPath} --topic ${topicCode}`;
+      console.log(`Executing: ${command}`);
+      console.log(`Working directory: ${path.dirname(scriptPath)}`);
+      
+      const child = exec(command, { 
+        cwd: path.dirname(scriptPath),
+        env: { ...process.env, PYTHONUNBUFFERED: '1' }
       });
       
       let stdoutData = '';
       let stderrData = '';
       
       child.stdout.on('data', (data) => {
-        stdoutData += data;
-        console.log(`stdout: ${data}`);
+        const strData = data.toString();
+        stdoutData += strData;
+        console.log(`stdout: ${strData}`);
       });
       
       child.stderr.on('data', (data) => {
-        stderrData += data;
-        console.error(`stderr: ${data}`);
+        const strData = data.toString();
+        stderrData += strData;
+        console.error(`stderr: ${strData}`);
+      });
+      
+      // Add error event handler
+      child.on('error', (error) => {
+        console.error('Child process error:', error);
+        stderrData += `Child process error: ${error.message}\n`;
       });
       
       child.on('close', (code) => {

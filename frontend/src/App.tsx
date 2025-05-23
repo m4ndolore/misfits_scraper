@@ -189,34 +189,59 @@ const AppContent: React.FC<AppContentProps> = ({
     console.log('Attempting to download PDF for topic code:', topicCode);
     try {
       setDownloadingPdf(topicCode);
+      
+      // First, verify the server is reachable
+      const healthCheck = await fetch('http://localhost:3001/api/health');
+      if (!healthCheck.ok) {
+        throw new Error('Unable to connect to the PDF generation service');
+      }
+      
       const response = await fetch('http://localhost:3001/api/download-pdf', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/pdf',
         },
         credentials: 'include',
-        body: JSON.stringify({ topicCode }),  // Using topicCode directly
+        mode: 'cors',
+        body: JSON.stringify({ topicCode }),
       });
   
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to download PDF');
+        let errorMessage = 'Failed to download PDF';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorData.message || errorMessage;
+          console.error('Server error details:', errorData);
+        } catch (e) {
+          console.error('Could not parse error response:', e);
+        }
+        throw new Error(errorMessage);
       }
   
       const blob = await response.blob();
+      
+      if (!blob || blob.size === 0) {
+        throw new Error('Received empty PDF file');
+      }
+      
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `topic_${topicCode}.pdf`;  // Using topicCode in filename
+      a.download = `topic_${topicCode}.pdf`;
       document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
+      
+      // Cleanup
+      setTimeout(() => {
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      }, 100);
   
     } catch (error: unknown) {
       console.error('Download error:', error);
       const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-      alert(`Error downloading PDF: ${errorMessage}`);
+      alert(`Error downloading PDF: ${errorMessage}\n\nPlease make sure the backend server is running and accessible.`);
     } finally {
       setDownloadingPdf(null);
     }
