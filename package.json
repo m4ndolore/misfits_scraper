@@ -5,8 +5,7 @@
     "scripts": {
       "build": "cd frontend && npm install && npm run build",
       "start": "node server.js",
-      "dev": "node server.js",
-      "install-frontend": "cd frontend && npm install"
+      "dev": "node server.js"
     },
     "dependencies": {
       "express": "^4.18.2",
