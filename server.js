@@ -48,7 +48,8 @@ app.post('/api/download-pdf', async (req, res) => {
     console.log(`Processing PDF generation for topic code: ${topicCode}`);
   
     try {
-      const scriptPath = path.join(__dirname, '..', '..', 'frontend', 'script.py');
+      // Use absolute path to script
+      const scriptPath = path.join(__dirname, 'script.py');
       console.log(`Using script at: ${scriptPath}`);
       
       if (!fs.existsSync(scriptPath)) {
@@ -59,7 +60,7 @@ app.post('/api/download-pdf', async (req, res) => {
           details: {
             scriptPath,
             currentDirectory: process.cwd(),
-            directoryContents: fs.readdirSync(path.dirname(scriptPath))
+            directoryContents: fs.readdirSync(__dirname)
           }
         });
       }
@@ -68,13 +69,30 @@ app.post('/api/download-pdf', async (req, res) => {
         fs.mkdirSync(downloadsDir, { recursive: true });
       }
       
-      const command = `python3 ${scriptPath} --topic ${topicCode}`;
+      // Try different Python commands
+      const pythonCommands = ['python3', 'python', '/usr/bin/python3'];
+      let pythonCmd = 'python3';
+      
+      // Find working Python command
+      for (const cmd of pythonCommands) {
+        try {
+          require('child_process').execSync(`${cmd} --version`, { stdio: 'pipe' });
+          pythonCmd = cmd;
+          console.log(`Using Python command: ${pythonCmd}`);
+          break;
+        } catch (e) {
+          continue;
+        }
+      }
+      
+      const command = `${pythonCmd} "${scriptPath}" --topic "${topicCode}"`;
       console.log(`Executing: ${command}`);
-      console.log(`Working directory: ${path.dirname(scriptPath)}`);
+      console.log(`Working directory: ${__dirname}`);
       
       const child = exec(command, { 
-        cwd: path.dirname(scriptPath),
-        env: { ...process.env, PYTHONUNBUFFERED: '1' }
+        cwd: __dirname,
+        env: { ...process.env, PYTHONUNBUFFERED: '1' },
+        timeout: 240000 // 4 minute timeout
       });
       
       let stdoutData = '';
