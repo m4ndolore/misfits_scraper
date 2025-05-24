@@ -5,29 +5,33 @@ frontend/node_modules/
 # Build outputs
 frontend/dist/
 dist/
+build/
 
 # Environment variables
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env*
 
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
 venv/
+.venv/
 
-# Downloads and temp files
+# Downloads and temp files (IMPORTANT: Keep PDFs out of git)
 downloads/
 debug_screenshots/
 *.pdf
+*.PDF
 
 # Logs
+*.log
 npm-debug.log*
 yarn-debug.log*
-yarn-error.log*
+
+# Docker (not needed for Railway)
+Dockerfile*
+docker-compose*
+.dockerignore
 
 # OS
 .DS_Store
@@ -36,3 +40,9 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# Railway
+.railway/
+
+# Backup files
+*.backup
