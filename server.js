@@ -3,33 +3,26 @@ const { exec } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const cors = require('cors');
-const { chromium } = require('playwright'); // Use Playwright instead of Puppeteer
+const { chromium } = require('playwright');
 const app = express();
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 
 // Enable CORS for all routes
-app.use((req, res, next) => {
-  const allowedOrigins = ['http://localhost:5174', 'http://127.0.0.1:5174'];
-  const origin = req.headers.origin;
-  
-  if (allowedOrigins.includes(origin)) {
-    res.header('Access-Control-Allow-Origin', origin);
-  }
-  
-  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  
-  // Handle preflight requests
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-  
-  next();
-});
+app.use(cors({
+  origin: true,
+  credentials: true
+}));
 
 app.use(express.json());
-app.use(express.static('public'));
+
+// Serve static files from frontend build
+const frontendPath = path.join(__dirname, 'frontend', 'dist');
+if (fs.existsSync(frontendPath)) {
+  app.use(express.static(frontendPath));
+  console.log('Serving frontend from:', frontendPath);
+} else {
+  console.log('Frontend dist folder not found at:', frontendPath);
+}
 
 // Ensure downloads directory exists
 const downloadsDir = path.join(__dirname, 'downloads');
@@ -706,7 +699,18 @@ function generateTopicHTML(topic, questions) {
 
 // Start server
 const server = app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`Server running on port ${PORT}`);
+    console.log(`Frontend served from: ${frontendPath}`);
+});
+
+// Serve React app for all non-API routes (SPA support)
+app.get('*', (req, res) => {
+  const indexPath = path.join(frontendPath, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.status(404).send('Frontend not built. Run npm run build first.');
+  }
 });
 
 // Add these event listeners to better understand server status

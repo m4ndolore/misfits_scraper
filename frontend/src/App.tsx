@@ -265,15 +265,17 @@ const AppContent: React.FC<AppContentProps> = ({
     }
   };
 
+  // API base URL - use relative URLs since frontend and backend are on same domain
+  const API_BASE_URL = '';  // Empty string for same-origin requests
+
   // Download official PDF function
   const downloadOfficialPdf = async (topicCode: string): Promise<void> => {
-    const response = await fetch('http://localhost:3001/api/download-pdf', {
+    const response = await fetch(`${API_BASE_URL}/api/download-pdf`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/pdf',
       },
-      credentials: 'include',
       mode: 'cors',
       body: JSON.stringify({ topicCode }),
     });
@@ -354,13 +356,12 @@ const AppContent: React.FC<AppContentProps> = ({
       console.log('Questions count:', questions.length);
 
       // Send to backend to generate PDF
-      const response = await fetch('http://localhost:3001/api/generate-topic-pdf', {
+      const response = await fetch(`${API_BASE_URL}/api/generate-topic-pdf`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/pdf',
         },
-        credentials: 'include',
         mode: 'cors',
         body: JSON.stringify({ 
           topic: topicDetails,
