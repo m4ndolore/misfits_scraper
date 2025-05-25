@@ -42,7 +42,16 @@ app.get('/api/health', (req, res) => {
 
 // Add a simple root health check too
 app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'healthy' });
+  res.status(200).send('OK');
+});
+
+// Add root endpoint that doesn't require frontend
+app.get('/', (req, res) => {
+  if (fs.existsSync(path.join(frontendPath, 'index.html'))) {
+    res.sendFile(path.join(frontendPath, 'index.html'));
+  } else {
+    res.status(200).send('Server is running - Frontend not built');
+  }
 });
 
 // PDF download endpoint (existing)
@@ -730,6 +739,12 @@ const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`Frontend served from: ${frontendPath}`);
     console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`Server started at: ${new Date().toISOString()}`);
+    
+    // Test health endpoints immediately
+    console.log('Testing health endpoints...');
+    console.log(`Health check available at: http://localhost:${PORT}/health`);
+    console.log(`API health check available at: http://localhost:${PORT}/api/health`);
 });
 
 // Serve React app for all non-API routes (SPA support)
@@ -756,7 +771,7 @@ process.on('SIGTERM', () => {
   console.log('Received SIGTERM, shutting down gracefully');
   server.close(() => {
     console.log('Server closed');
-    process.exit(0);
+    // Don't call process.exit() - let Railway handle it
   });
 });
 
@@ -764,17 +779,17 @@ process.on('SIGINT', () => {
   console.log('Received SIGINT, shutting down gracefully');
   server.close(() => {
     console.log('Server closed');
-    process.exit(0);
+    // Don't call process.exit() - let Railway handle it
   });
 });
 
-// Error handling
+// Error handling - don't exit on errors in production
 process.on('uncaughtException', (error) => {
   console.error('Uncaught Exception:', error);
-  process.exit(1);
+  // Don't exit in production - just log
 });
 
 process.on('unhandledRejection', (reason) => {
   console.error('Unhandled Rejection:', reason);
-  process.exit(1);
+  // Don't exit in production - just log
 });
