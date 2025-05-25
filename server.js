@@ -5,7 +5,7 @@ const fs = require('fs');
 const cors = require('cors');
 const { chromium } = require('playwright');
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3001; // Single PORT declaration
 
 // Enable CORS for all routes
 app.use(cors({
@@ -726,7 +726,6 @@ function generateTopicHTML(topic, questions) {
 }
 
 // Start server
-const PORT = process.env.PORT || 3001;
 const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`Frontend served from: ${frontendPath}`);
