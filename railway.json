@@ -9,5 +9,10 @@
     "healthcheckTimeout": 120,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 3
+  },
+  "scripts": {
+    "start": "node server.js",
+    "build": "cd frontend && npm install && npm run build",
+    "postinstall": "npx playwright install chromium"
   }
 }
