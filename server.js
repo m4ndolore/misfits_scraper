@@ -4,11 +4,15 @@ const path = require('path');
 const fs = require('fs');
 const cors = require('cors');
 const { chromium } = require('playwright');
+const util = require('util');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Application readiness flag
 let isAppReady = false;
+
+// Promisify exec for async usage
+const execPromise = util.promisify(exec);
 
 console.log('=== APPLICATION STARTUP ===');
 console.log(`Node.js version: ${process.version}`);
@@ -48,6 +52,68 @@ if (fs.existsSync(frontendPath)) {
 // Ensure downloads directory exists
 if (!fs.existsSync(downloadsDir)) {
   fs.mkdirSync(downloadsDir, { recursive: true });
+}
+
+// Function to ensure Playwright browsers are installed
+async function ensurePlaywrightBrowsers() {
+  console.log('Checking Playwright browser installation...');
+  
+  try {
+    // Try to launch browser to test if it works
+    const testBrowser = await chromium.launch({ 
+      headless: true,
+      timeout: 5000 
+    });
+    await testBrowser.close();
+    console.log('✅ Playwright browsers are working correctly');
+    return true;
+  } catch (error) {
+    console.log('❌ Playwright browser check failed:', error.message);
+    
+    if (error.message.includes('Executable doesn\'t exist') || 
+        error.message.includes('browserType.launch')) {
+      
+      console.log('🔧 Installing Playwright browsers...');
+      
+      try {
+        // Install chromium browser
+        await execPromise('npx playwright install chromium');
+        console.log('✅ Playwright chromium installed');
+        
+        // Install system dependencies
+        await execPromise('npx playwright install-deps chromium');
+        console.log('✅ Playwright system dependencies installed');
+        
+        // Test again
+        const testBrowser = await chromium.launch({ headless: true });
+        await testBrowser.close();
+        console.log('✅ Playwright browsers are now working');
+        return true;
+        
+      } catch (installError) {
+        console.error('❌ Failed to install Playwright browsers:', installError.message);
+        
+        // Try alternative installation method
+        try {
+          console.log('🔧 Trying alternative installation...');
+          await execPromise('npx playwright install --with-deps chromium');
+          console.log('✅ Alternative installation completed');
+          
+          const testBrowser = await chromium.launch({ headless: true });
+          await testBrowser.close();
+          console.log('✅ Playwright browsers working after alternative install');
+          return true;
+          
+        } catch (altError) {
+          console.error('❌ Alternative installation also failed:', altError.message);
+          return false;
+        }
+      }
+    } else {
+      console.error('❌ Browser launch failed for other reasons:', error.message);
+      return false;
+    }
+  }
 }
 
 // Request logging middleware
@@ -192,7 +258,6 @@ app.post('/api/download-pdf', async (req, res) => {
         console.error(`stderr: ${strData}`);
       });
       
-      // Add error event handler
       child.on('error', (error) => {
         console.error('Child process error:', error);
         stderrData += `Child process error: ${error.message}\n`;
@@ -223,7 +288,6 @@ app.post('/api/download-pdf', async (req, res) => {
           if (fs.existsSync(originalPath)) {
             const targetPath = path.join(downloadsDir, path.basename(originalPath));
             
-            // Copy the file to our downloads directory (using copy instead of move)
             fs.copyFileSync(originalPath, targetPath);
             console.log(`PDF copied from ${originalPath} to ${targetPath}`);
             
@@ -251,11 +315,10 @@ app.post('/api/download-pdf', async (req, res) => {
           );
           
           if (pdfFiles.length > 0) {
-            const pdfFile = pdfFiles[0]; // Take the first matching PDF
+            const pdfFile = pdfFiles[0];
             const originalPath = path.join(scriptDir, pdfFile);
             const targetPath = path.join(downloadsDir, pdfFile);
             
-            // Copy the file to our downloads directory
             fs.copyFileSync(originalPath, targetPath);
             console.log(`PDF copied from ${originalPath} to ${targetPath}`);
             
@@ -281,7 +344,7 @@ app.post('/api/download-pdf', async (req, res) => {
     }
 });
 
-// NEW: Topic Details PDF Generation endpoint
+// Enhanced Topic Details PDF Generation endpoint with Playwright browser management
 app.post('/api/generate-topic-pdf', async (req, res) => {
   let browser = null;
   
@@ -299,7 +362,6 @@ app.post('/api/generate-topic-pdf', async (req, res) => {
 
     console.log('Step 1: Generating HTML content...');
     
-    // Create HTML content
     let htmlContent;
     try {
       htmlContent = generateTopicHTML(topic, questions || []);
@@ -312,9 +374,20 @@ app.post('/api/generate-topic-pdf', async (req, res) => {
       });
     }
     
-    console.log('Step 2: Launching browser...');
+    console.log('Step 2: Ensuring Playwright browsers are available...');
     
-    // Launch Playwright browser
+    // Ensure browsers are installed
+    const browsersReady = await ensurePlaywrightBrowsers();
+    if (!browsersReady) {
+      console.error('Step 2 Failed - Could not ensure browsers are ready');
+      return res.status(500).json({ 
+        error: 'Failed to initialize PDF generation browser', 
+        details: 'Playwright browsers could not be installed or launched' 
+      });
+    }
+    
+    console.log('Step 3: Launching browser...');
+    
     try {
       browser = await chromium.launch({
         headless: true,
@@ -326,27 +399,32 @@ app.post('/api/generate-topic-pdf', async (req, res) => {
           '--no-first-run',
           '--no-zygote',
           '--single-process',
-          '--disable-gpu'
-        ]
+          '--disable-gpu',
+          '--disable-extensions',
+          '--disable-background-timer-throttling',
+          '--disable-backgrounding-occluded-windows',
+          '--disable-renderer-backgrounding'
+        ],
+        timeout: 30000
       });
-      console.log('Step 2: Browser launched successfully');
+      console.log('Step 3: Browser launched successfully');
     } catch (browserError) {
-      console.error('Step 2 Failed - Browser launch error:', browserError);
+      console.error('Step 3 Failed - Browser launch error:', browserError);
       return res.status(500).json({ 
         error: 'Failed to launch browser', 
         details: browserError.message 
       });
     }
 
-    console.log('Step 3: Creating page and setting content...');
+    console.log('Step 4: Creating page and setting content...');
     
     let page;
     try {
       page = await browser.newPage();
-      await page.setContent(htmlContent, { waitUntil: 'networkidle' });
-      console.log('Step 3: Page content set successfully');
+      await page.setContent(htmlContent, { waitUntil: 'networkidle', timeout: 30000 });
+      console.log('Step 4: Page content set successfully');
     } catch (pageError) {
-      console.error('Step 3 Failed - Page setup error:', pageError);
+      console.error('Step 4 Failed - Page setup error:', pageError);
       await browser.close();
       return res.status(500).json({ 
         error: 'Failed to setup page content', 
@@ -354,7 +432,7 @@ app.post('/api/generate-topic-pdf', async (req, res) => {
       });
     }
     
-    console.log('Step 4: Generating PDF...');
+    console.log('Step 5: Generating PDF...');
     
     let pdfBuffer;
     try {
@@ -366,11 +444,12 @@ app.post('/api/generate-topic-pdf', async (req, res) => {
           right: '1cm',
           bottom: '1cm',
           left: '1cm'
-        }
+        },
+        timeout: 30000
       });
-      console.log('Step 4: PDF generated successfully, size:', pdfBuffer.length, 'bytes');
+      console.log('Step 5: PDF generated successfully, size:', pdfBuffer.length, 'bytes');
     } catch (pdfError) {
-      console.error('Step 4 Failed - PDF generation error:', pdfError);
+      console.error('Step 5 Failed - PDF generation error:', pdfError);
       await browser.close();
       return res.status(500).json({ 
         error: 'Failed to generate PDF', 
@@ -379,7 +458,7 @@ app.post('/api/generate-topic-pdf', async (req, res) => {
     }
 
     await browser.close();
-    console.log('Step 5: Browser closed, sending PDF...');
+    console.log('Step 6: Browser closed, sending PDF...');
 
     // Set headers for PDF download
     res.setHeader('Content-Type', 'application/pdf');
@@ -809,8 +888,8 @@ app.get('*', (req, res) => {
 
 console.log('Starting server...');
 
-// Start server - SINGLE declaration
-const server = app.listen(PORT, '0.0.0.0', () => {
+// Start server with Playwright browser initialization
+const server = app.listen(PORT, '0.0.0.0', async () => {
     console.log('=== SERVER STARTUP COMPLETE ===');
     console.log(`✅ Server successfully started on port ${PORT}`);
     console.log(`✅ Listening on all interfaces (0.0.0.0:${PORT})`);
@@ -821,8 +900,18 @@ const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`✅ Server started at: ${new Date().toISOString()}`);
     console.log('================================');
     
-    // Give the app a moment to fully initialize before marking as ready
     console.log('Initializing application components...');
+    
+    // Initialize Playwright browsers during startup
+    try {
+      console.log('🔧 Initializing Playwright browsers...');
+      await ensurePlaywrightBrowsers();
+      console.log('✅ Playwright browsers initialized successfully');
+    } catch (error) {
+      console.error('❌ Failed to initialize Playwright browsers:', error);
+      console.error('PDF generation may not work properly');
+    }
+    
     setTimeout(() => {
       isAppReady = true;
       console.log('=== APPLICATION READY ===');
@@ -830,7 +919,7 @@ const server = app.listen(PORT, '0.0.0.0', () => {
       console.log(`✅ Health check endpoint: http://localhost:${PORT}/health`);
       console.log(`✅ API health check: http://localhost:${PORT}/api/health`);
       console.log('=========================');
-    }, 3000); // 3 seconds to ensure everything is ready
+    }, 5000); // 5 seconds to allow for browser installation
 });
 
 // Enhanced server event handlers
