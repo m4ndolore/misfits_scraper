@@ -41,6 +41,34 @@ console.log(`Frontend path: ${frontendPath}`);
 console.log(`Frontend path exists: ${fs.existsSync(frontendPath)}`);
 console.log(`Downloads directory exists: ${fs.existsSync(downloadsDir)}`);
 
+console.log('=== PYTHON ENVIRONMENT CHECK ===');
+
+// Check if Python is available
+try {
+  const pythonCheck = require('child_process').execSync('which python3', { stdio: 'pipe' }).toString().trim();
+  console.log('✅ Python3 found at:', pythonCheck);
+  
+  const pythonVersion = require('child_process').execSync('python3 --version', { stdio: 'pipe' }).toString().trim();
+  console.log('✅ Python version:', pythonVersion);
+  
+  const pipVersion = require('child_process').execSync('pip3 --version', { stdio: 'pipe' }).toString().trim();
+  console.log('✅ Pip version:', pipVersion);
+  
+} catch (error) {
+  console.error('❌ Python environment check failed:', error.message);
+  console.log('🔧 Available commands:');
+  try {
+    const availableCommands = require('child_process').execSync('ls /usr/bin/python*', { stdio: 'pipe' }).toString();
+    console.log(availableCommands);
+  } catch (e) {
+    console.log('No Python binaries found in /usr/bin/');
+  }
+}
+
+// Check environment variables
+console.log('Environment PATH:', process.env.PATH);
+console.log('Working directory:', process.cwd());
+console.log('================================');
 // Serve static files from frontend build
 if (fs.existsSync(frontendPath)) {
   app.use(express.static(frontendPath));
