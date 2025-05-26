@@ -5,9 +5,10 @@ const fs = require('fs');
 const cors = require('cors');
 const { chromium } = require('playwright');
 const app = express();
-const PORT = process.env.PORT || 3001; // Single PORT declaration
+const PORT = process.env.PORT || 3001;
 
-// Add this at the very beginning of your server.js file, after the imports
+// Application readiness flag
+let isAppReady = false;
 
 console.log('=== APPLICATION STARTUP ===');
 console.log(`Node.js version: ${process.version}`);
@@ -18,83 +19,51 @@ console.log(`PORT environment variable: ${process.env.PORT}`);
 console.log(`NODE_ENV: ${process.env.NODE_ENV}`);
 console.log('===============================');
 
-// Add this before your app.listen() call
+// Enable CORS for all routes
+app.use(cors({
+  origin: true,
+  credentials: true
+}));
+
+app.use(express.json());
+
+// Define paths
+const frontendPath = path.join(__dirname, 'frontend', 'dist');
+const downloadsDir = path.join(__dirname, 'downloads');
+
 console.log('Setting up server...');
 console.log(`Will listen on port: ${PORT}`);
+console.log(`Frontend path: ${frontendPath}`);
 console.log(`Frontend path exists: ${fs.existsSync(frontendPath)}`);
 console.log(`Downloads directory exists: ${fs.existsSync(downloadsDir)}`);
 
-// Replace your existing server.listen section with this enhanced version:
-console.log('Starting server...');
-const server = app.listen(PORT, '0.0.0.0', () => {
-    console.log('=== SERVER STARTUP COMPLETE ===');
-    console.log(`✅ Server successfully started on port ${PORT}`);
-    console.log(`✅ Listening on all interfaces (0.0.0.0:${PORT})`);
-    console.log(`✅ Frontend path: ${frontendPath}`);
-    console.log(`✅ Frontend exists: ${fs.existsSync(frontendPath)}`);
-    console.log(`✅ Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`✅ Process ID: ${process.pid}`);
-    console.log(`✅ Server started at: ${new Date().toISOString()}`);
-    console.log('================================');
-    
-    // Give the app a moment to fully initialize before marking as ready
-    console.log('Initializing application components...');
-    setTimeout(() => {
-      isAppReady = true;
-      console.log('=== APPLICATION READY ===');
-      console.log('✅ Application is now ready to receive traffic');
-      console.log(`✅ Health check endpoint: http://localhost:${PORT}/health`);
-      console.log(`✅ API health check: http://localhost:${PORT}/api/health`);
-      console.log('=========================');
-    }, 3000); // Increased to 3 seconds to ensure everything is ready
-});
+// Serve static files from frontend build
+if (fs.existsSync(frontendPath)) {
+  app.use(express.static(frontendPath));
+  console.log('Serving frontend from:', frontendPath);
+} else {
+  console.log('Frontend dist folder not found at:', frontendPath);
+}
 
-// Add enhanced error handling for the server
-server.on('error', (error) => {
-    console.error('=== SERVER ERROR ===');
-    console.error('Error code:', error.code);
-    console.error('Error message:', error.message);
-    console.error('Error stack:', error.stack);
-    console.error('===================');
-    
-    if (error.code === 'EADDRINUSE') {
-        console.error(`Port ${PORT} is already in use`);
-    }
-});
+// Ensure downloads directory exists
+if (!fs.existsSync(downloadsDir)) {
+  fs.mkdirSync(downloadsDir, { recursive: true });
+}
 
-server.on('listening', () => {
-    const addr = server.address();
-    console.log('=== SERVER LISTENING ===');
-    console.log(`Server is listening on ${addr.address}:${addr.port}`);
-    console.log(`Server family: ${addr.family}`);
-    console.log('========================');
-});
-
-// Add connection tracking for debugging
-server.on('connection', (socket) => {
-    console.log(`New connection from ${socket.remoteAddress}:${socket.remotePort}`);
-});
-
-// Enhanced request logging middleware (add this after your existing middleware)
+// Request logging middleware
 app.use((req, res, next) => {
-    const timestamp = new Date().toISOString();
-    console.log(`[${timestamp}] ${req.method} ${req.url} from ${req.ip}`);
-    
-    // Log the user agent to see if it's Railway's health checker
-    const userAgent = req.get('User-Agent') || 'unknown';
-    if (userAgent.includes('Railway') || req.url === '/health' || req.url === '/api/health') {
-        console.log(`Health check request - User-Agent: ${userAgent}`);
-    }
-    
-    next();
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] ${req.method} ${req.url} from ${req.ip}`);
+  
+  const userAgent = req.get('User-Agent') || 'unknown';
+  if (userAgent.includes('Railway') || req.url === '/health' || req.url === '/api/health') {
+    console.log(`Health check request - User-Agent: ${userAgent}`);
+  }
+  
+  next();
 });
 
-// Add this near the top of your server.js file, after your imports
-let isAppReady = false;
-
-// Replace your existing health check endpoints with these improved versions:
-
-// Health check endpoint with proper readiness indication
+// Health check endpoints with proper readiness indication
 app.get('/health', (req, res) => {
   console.log('Health check requested from:', req.get('host') || 'unknown');
   
@@ -121,7 +90,6 @@ app.get('/health', (req, res) => {
   res.status(200).json(healthData);
 });
 
-// Keep your existing API health check but make it consistent
 app.get('/api/health', (req, res) => {
   if (!isAppReady) {
     return res.status(503).json({ 
@@ -140,86 +108,7 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Add this AFTER your server.listen() call to mark the app as ready
-const server = app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on port ${PORT}`);
-    console.log(`Frontend served from: ${frontendPath}`);
-    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`Server started at: ${new Date().toISOString()}`);
-    
-    // Important: Mark app as ready AFTER server is listening
-    setTimeout(() => {
-      isAppReady = true;
-      console.log('✅ Application is now ready to receive traffic');
-      console.log(`Health check available at: http://localhost:${PORT}/health`);
-      console.log(`API health check available at: http://localhost:${PORT}/api/health`);
-    }, 2000); // Give 2 seconds for everything to initialize
-});
-
-// Improve graceful shutdown handling
-const gracefulShutdown = (signal) => {
-  console.log(`Received ${signal}, starting graceful shutdown...`);
-  isAppReady = false; // Mark as not ready immediately
-  
-  server.close((err) => {
-    if (err) {
-      console.error('Error during server shutdown:', err);
-      process.exit(1);
-    }
-    console.log('Server closed gracefully');
-    process.exit(0);
-  });
-  
-  // Force shutdown after 10 seconds
-  setTimeout(() => {
-    console.error('Forced shutdown due to timeout');
-    process.exit(1);
-  }, 10000);
-};
-
-// Update your existing signal handlers
-process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-
-// Enable CORS for all routes
-app.use(cors({
-  origin: true,
-  credentials: true
-}));
-
-app.use(express.json());
-
-// Serve static files from frontend build
-const frontendPath = path.join(__dirname, 'frontend', 'dist');
-if (fs.existsSync(frontendPath)) {
-  app.use(express.static(frontendPath));
-  console.log('Serving frontend from:', frontendPath);
-} else {
-  console.log('Frontend dist folder not found at:', frontendPath);
-}
-
-// Ensure downloads directory exists
-const downloadsDir = path.join(__dirname, 'downloads');
-if (!fs.existsSync(downloadsDir)) {
-  fs.mkdirSync(downloadsDir, { recursive: true });
-}
-
-// Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'ok', 
-    message: 'Server is running',
-    timestamp: new Date().toISOString(),
-    port: PORT
-  });
-});
-
-// Add a simple root health check too
-app.get('/health', (req, res) => {
-  res.status(200).send('OK');
-});
-
-// Add root endpoint that doesn't require frontend
+// Root endpoint
 app.get('/', (req, res) => {
   if (fs.existsSync(path.join(frontendPath, 'index.html'))) {
     res.sendFile(path.join(frontendPath, 'index.html'));
@@ -908,19 +797,6 @@ function generateTopicHTML(topic, questions) {
   `;
 }
 
-// Start server
-const server = app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on port ${PORT}`);
-    console.log(`Frontend served from: ${frontendPath}`);
-    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`Server started at: ${new Date().toISOString()}`);
-    
-    // Test health endpoints immediately
-    console.log('Testing health endpoints...');
-    console.log(`Health check available at: http://localhost:${PORT}/health`);
-    console.log(`API health check available at: http://localhost:${PORT}/api/health`);
-});
-
 // Serve React app for all non-API routes (SPA support)
 app.get('*', (req, res) => {
   const indexPath = path.join(frontendPath, 'index.html');
@@ -931,31 +807,81 @@ app.get('*', (req, res) => {
   }
 });
 
-// Add these event listeners to better understand server status
+console.log('Starting server...');
+
+// Start server - SINGLE declaration
+const server = app.listen(PORT, '0.0.0.0', () => {
+    console.log('=== SERVER STARTUP COMPLETE ===');
+    console.log(`✅ Server successfully started on port ${PORT}`);
+    console.log(`✅ Listening on all interfaces (0.0.0.0:${PORT})`);
+    console.log(`✅ Frontend path: ${frontendPath}`);
+    console.log(`✅ Frontend exists: ${fs.existsSync(frontendPath)}`);
+    console.log(`✅ Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`✅ Process ID: ${process.pid}`);
+    console.log(`✅ Server started at: ${new Date().toISOString()}`);
+    console.log('================================');
+    
+    // Give the app a moment to fully initialize before marking as ready
+    console.log('Initializing application components...');
+    setTimeout(() => {
+      isAppReady = true;
+      console.log('=== APPLICATION READY ===');
+      console.log('✅ Application is now ready to receive traffic');
+      console.log(`✅ Health check endpoint: http://localhost:${PORT}/health`);
+      console.log(`✅ API health check: http://localhost:${PORT}/api/health`);
+      console.log('=========================');
+    }, 3000); // 3 seconds to ensure everything is ready
+});
+
+// Enhanced server event handlers
 server.on('error', (error) => {
-    console.error('Server error:', error);
+    console.error('=== SERVER ERROR ===');
+    console.error('Error code:', error.code);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    console.error('===================');
+    
+    if (error.code === 'EADDRINUSE') {
+        console.error(`Port ${PORT} is already in use`);
+    }
 });
 
 server.on('listening', () => {
-    console.log('Server is listening and ready to accept connections');
+    const addr = server.address();
+    console.log('=== SERVER LISTENING ===');
+    console.log(`Server is listening on ${addr.address}:${addr.port}`);
+    console.log(`Server family: ${addr.family}`);
+    console.log('========================');
+});
+
+server.on('connection', (socket) => {
+    console.log(`New connection from ${socket.remoteAddress}:${socket.remotePort}`);
 });
 
 // Graceful shutdown handling
-process.on('SIGTERM', () => {
-  console.log('Received SIGTERM, shutting down gracefully');
-  server.close(() => {
-    console.log('Server closed');
-    // Don't call process.exit() - let Railway handle it
+const gracefulShutdown = (signal) => {
+  console.log(`Received ${signal}, starting graceful shutdown...`);
+  isAppReady = false; // Mark as not ready immediately
+  
+  server.close((err) => {
+    if (err) {
+      console.error('Error during server shutdown:', err);
+      process.exit(1);
+    }
+    console.log('Server closed gracefully');
+    process.exit(0);
   });
-});
+  
+  // Force shutdown after 10 seconds
+  setTimeout(() => {
+    console.error('Forced shutdown due to timeout');
+    process.exit(1);
+  }, 10000);
+};
 
-process.on('SIGINT', () => {
-  console.log('Received SIGINT, shutting down gracefully');
-  server.close(() => {
-    console.log('Server closed');
-    // Don't call process.exit() - let Railway handle it
-  });
-});
+// Signal handlers
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 // Error handling - don't exit on errors in production
 process.on('uncaughtException', (error) => {
