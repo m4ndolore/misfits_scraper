@@ -48,18 +48,38 @@ RUN npm ci --only=production
 RUN npx playwright install chromium
 RUN npx playwright install-deps chromium
 
-# Copy requirements.txt if it exists and install Python dependencies in virtual environment
+# Copy requirements.txt and install Python dependencies
 COPY requirements.txt* ./
-RUN if [ -f requirements.txt ]; then pip install --no-cache-dir -r requirements.txt; fi
 
-# Install Python Playwright browsers (after installing playwright python package)
-RUN if [ -f requirements.txt ] && grep -q "playwright" requirements.txt; then playwright install chromium; fi
+# Install Python dependencies with explicit error handling
+RUN if [ -f requirements.txt ]; then \
+    echo "Installing Python packages from requirements.txt..." && \
+    pip install --no-cache-dir -r requirements.txt && \
+    echo "Python packages installed successfully" && \
+    pip list | grep -E "(playwright|requests|beautifulsoup)" \
+    ; else \
+    echo "No requirements.txt found" \
+    ; fi
 
-# Verify installations
+# Install Python Playwright browsers with explicit error handling
+RUN if command -v playwright > /dev/null 2>&1; then \
+    echo "Installing Python Playwright browsers..." && \
+    playwright install chromium && \
+    echo "Python Playwright browsers installed successfully" \
+    ; else \
+    echo "Python Playwright CLI not available" \
+    ; fi
+
+# Verify installations with detailed output
+RUN echo "=== VERIFICATION ==="
 RUN npx playwright --version
 RUN python --version
 RUN pip --version
-RUN if command -v playwright > /dev/null; then playwright --version; fi
+RUN echo "=== PYTHON PACKAGES ==="
+RUN pip list
+RUN echo "=== PLAYWRIGHT TEST ==="
+RUN python -c "import playwright.sync_api; print('✅ Python Playwright import successful')" || echo "❌ Python Playwright import failed"
+RUN echo "===================="
 
 # Copy the rest of the application code
 COPY . .
