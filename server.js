@@ -442,24 +442,7 @@ app.post('/api/download-pdf', async (req, res) => {
       child.on('close', (code) => {
         console.log(`Python script exited with code ${code}`);
         
-        if (code !== 0) {
-          console.error(`Script failed with code ${code}`);
-          return res.status(500).json({ 
-            error: 'Failed to generate PDF', 
-            details: { 
-              message: 'The PDF download process failed',
-              stdout: stdoutData,
-              stderr: stderrData,
-              pythonCommand: pythonCmd,
-              environment: {
-                PATH: pythonEnv.PATH,
-                VIRTUAL_ENV: pythonEnv.VIRTUAL_ENV
-              }
-            } 
-          });
-        }
-        
-        // Look for the saved file path in the stdout
+        // First, check if PDF was successfully created (regardless of exit code)
         const savedPathMatch = stdoutData.match(/PDF saved to: (.+\.PDF)/i);
         
         if (savedPathMatch && savedPathMatch[1]) {
@@ -469,26 +452,36 @@ app.post('/api/download-pdf', async (req, res) => {
           if (fs.existsSync(originalPath)) {
             const targetPath = path.join(downloadsDir, path.basename(originalPath));
             
+            // Copy the file to our downloads directory
             fs.copyFileSync(originalPath, targetPath);
-            console.log(`PDF copied from ${originalPath} to ${targetPath}`);
             
-            console.log(`PDF found, initiating download`);
-            res.download(targetPath, path.basename(originalPath), (err) => {
-              if (err) {
-                console.error('Download error:', err);
-                return res.status(500).json({ error: 'Failed to initiate download', details: err.message });
+            // Check if the copy was successful
+            if (fs.existsSync(targetPath)) {
+              if (code !== 0) {
+                console.log(`⚠️ PDF downloaded successfully despite script exit code ${code} (likely cleanup error)`);
+              } else {
+                console.log(`✅ PDF copied from ${originalPath} to ${targetPath}`);
               }
-            });
+              
+              console.log(`PDF found, initiating download`);
+              return res.download(targetPath, path.basename(originalPath), (err) => {
+                if (err) {
+                  console.error('Download error:', err);
+                  return res.status(500).json({ error: 'Failed to initiate download', details: err.message });
+                }
+              });
+            } else {
+              console.error(`❌ Failed to copy PDF from ${originalPath} to ${targetPath}`);
+            }
           } else {
-            console.error(`PDF file not found at reported path: ${originalPath}`);
-            res.status(500).json({ 
-              error: 'Failed to generate PDF', 
-              details: 'Output file not found at reported path' 
-            });
+            console.error(`❌ PDF file not found at reported path: ${originalPath}`);
           }
-        } else {
-          // Fallback to searching for any PDF file in the script directory
-          const scriptDir = path.dirname(scriptPath);
+        }
+        
+        // If no PDF found through stdout parsing, try fallback search
+        const scriptDir = path.dirname(scriptPath);
+        
+        try {
           const files = fs.readdirSync(scriptDir);
           const pdfFiles = files.filter(file => 
             file.toLowerCase().endsWith('.pdf') && 
@@ -496,28 +489,63 @@ app.post('/api/download-pdf', async (req, res) => {
           );
           
           if (pdfFiles.length > 0) {
-            const pdfFile = pdfFiles[0];
+            const pdfFile = pdfFiles[0]; // Take the first matching PDF
             const originalPath = path.join(scriptDir, pdfFile);
             const targetPath = path.join(downloadsDir, pdfFile);
             
+            // Copy the file to our downloads directory
             fs.copyFileSync(originalPath, targetPath);
-            console.log(`PDF copied from ${originalPath} to ${targetPath}`);
             
-            console.log(`PDF found, initiating download`);
-            res.download(targetPath, pdfFile, (err) => {
+            if (code !== 0) {
+              console.log(`⚠️ PDF found via fallback search despite script exit code ${code} (likely cleanup error)`);
+            } else {
+              console.log(`✅ PDF copied from ${originalPath} to ${targetPath} (fallback search)`);
+            }
+            
+            console.log(`PDF found via fallback, initiating download`);
+            return res.download(targetPath, pdfFile, (err) => {
               if (err) {
                 console.error('Download error:', err);
                 return res.status(500).json({ error: 'Failed to initiate download', details: err.message });
               }
             });
-          } else {
-            console.error(`No PDF files found in the script directory matching topic code: ${topicCode}`);
-            res.status(500).json({ 
-              error: 'Failed to generate PDF', 
-              details: 'Output file not found' 
-            });
           }
+        } catch (fallbackError) {
+          console.error('❌ Fallback search failed:', fallbackError.message);
         }
+        
+        // Only report failure if no PDF was found AND there's a real error
+        if (code !== 0) {
+          console.error(`❌ Script failed with code ${code} and no PDF was found`);
+          
+          // Check if this looks like a cleanup error vs a real error
+          const isCleanupError = stderrData.includes('TargetClosedError') || 
+                                stderrData.includes('Browser cleanup warning') ||
+                                stderrData.includes('Target page, context or browser has been closed');
+          
+          if (isCleanupError && stdoutData.includes('PDF saved to:')) {
+            console.log(`⚠️ This appears to be a cleanup error, but PDF was created`);
+            // We already handled the PDF above, so this shouldn't happen
+          }
+          
+          return res.status(500).json({ 
+            error: 'Failed to generate PDF', 
+            details: { 
+              message: 'The PDF download process failed',
+              stdout: stdoutData,
+              stderr: stderrData,
+              exitCode: code,
+              isLikelyCleanupError: isCleanupError
+            } 
+          });
+        }
+        
+        // Script succeeded but no PDF found (shouldn't happen)
+        console.error(`⚠️ Script succeeded (code ${code}) but no PDF was found`);
+        res.status(500).json({ 
+          error: 'PDF generation succeeded but file not found', 
+          details: 'Script completed successfully but the PDF file could not be located'
+        });
       });
     } catch (error) {
       console.error('Error:', error);

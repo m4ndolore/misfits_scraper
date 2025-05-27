@@ -106,8 +106,12 @@ def run():
         
         finally:
             # Only close once, like your working script
-            browser.close()
-            print("✅ Browser closed")
-
+            try:
+                if browser and not browser.is_closed():
+                    browser.close()
+                print("✅ Browser closed")
+            except Exception as cleanup_error:
+                print(f"⚠️ Browser cleanup warning (non-fatal): {cleanup_error}")
+                # Don't exit with error code for cleanup issues
 if __name__ == "__main__":
     run()
