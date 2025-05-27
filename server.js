@@ -43,27 +43,55 @@ console.log(`Downloads directory exists: ${fs.existsSync(downloadsDir)}`);
 
 console.log('=== PYTHON ENVIRONMENT CHECK ===');
 
-// Check if Python is available
+// Check virtual environment Python
+const venvPython = '/opt/venv/bin/python';
 try {
-  const pythonCheck = require('child_process').execSync('which python3', { stdio: 'pipe' }).toString().trim();
-  console.log('✅ Python3 found at:', pythonCheck);
-  
-  const pythonVersion = require('child_process').execSync('python3 --version', { stdio: 'pipe' }).toString().trim();
-  console.log('✅ Python version:', pythonVersion);
-  
-  const pipVersion = require('child_process').execSync('pip3 --version', { stdio: 'pipe' }).toString().trim();
-  console.log('✅ Pip version:', pipVersion);
-  
-} catch (error) {
-  console.error('❌ Python environment check failed:', error.message);
-  console.log('🔧 Available commands:');
-  try {
-    const availableCommands = require('child_process').execSync('ls /usr/bin/python*', { stdio: 'pipe' }).toString();
-    console.log(availableCommands);
-  } catch (e) {
-    console.log('No Python binaries found in /usr/bin/');
+  if (fs.existsSync(venvPython)) {
+    console.log('✅ Virtual environment Python found at:', venvPython);
+    
+    const pythonVersion = require('child_process').execSync(`${venvPython} --version`, { stdio: 'pipe' }).toString().trim();
+    console.log('✅ Virtual env Python version:', pythonVersion);
+    
+    // Test playwright import
+    try {
+      const playwrightTest = require('child_process').execSync(
+        `${venvPython} -c "import playwright.sync_api; print('Playwright available')"`, 
+        { stdio: 'pipe', timeout: 10000 }
+      ).toString().trim();
+      console.log('✅ Playwright test:', playwrightTest);
+    } catch (playwrightError) {
+      console.error('❌ Playwright import test failed:', playwrightError.message);
+    }
+    
+    // List installed packages
+    try {
+      const pipList = require('child_process').execSync(`${venvPython} -m pip list | grep -E "(playwright|requests|beautifulsoup)"`, { stdio: 'pipe' }).toString().trim();
+      console.log('📦 Installed Python packages:', pipList);
+    } catch (e) {
+      console.log('📦 Could not list packages');
+    }
+    
+  } else {
+    console.error('❌ Virtual environment Python not found at:', venvPython);
   }
+} catch (error) {
+  console.error('❌ Virtual environment check failed:', error.message);
 }
+
+// Check system Python as fallback
+try {
+  const systemPython = require('child_process').execSync('which python3', { stdio: 'pipe' }).toString().trim();
+  console.log('🔄 System Python3 found at:', systemPython);
+} catch (error) {
+  console.error('❌ System Python3 not found');
+}
+
+// Check environment variables
+console.log('🌍 Environment PATH:', process.env.PATH);
+console.log('🌍 VIRTUAL_ENV:', process.env.VIRTUAL_ENV || 'Not set');
+console.log('🌍 Working directory:', process.cwd());
+console.log('================================');
+
 
 // Check environment variables
 console.log('Environment PATH:', process.env.PATH);
@@ -245,29 +273,75 @@ app.post('/api/download-pdf', async (req, res) => {
         fs.mkdirSync(downloadsDir, { recursive: true });
       }
       
-      // Try different Python commands
-      const pythonCommands = ['python3', 'python', '/usr/bin/python3'];
-      let pythonCmd = 'python3';
+      // UPDATED: Try different Python paths including virtual environment
+      const pythonCommands = [
+        '/opt/venv/bin/python',    // Virtual environment python (Docker)
+        '/opt/venv/bin/python3',   // Virtual environment python3 (Docker)
+        'python3',                 // System python3
+        'python',                  // System python
+        '/usr/bin/python3'         // Absolute path to system python3
+      ];
+      
+      let pythonCmd = null;
       
       // Find working Python command
       for (const cmd of pythonCommands) {
         try {
-          require('child_process').execSync(`${cmd} --version`, { stdio: 'pipe' });
-          pythonCmd = cmd;
-          console.log(`Using Python command: ${pythonCmd}`);
-          break;
+          // Test if the command exists and can import playwright
+          const testResult = require('child_process').execSync(
+            `${cmd} -c "import playwright.sync_api; print('OK')"`, 
+            { stdio: 'pipe', timeout: 5000 }
+          ).toString().trim();
+          
+          if (testResult === 'OK') {
+            pythonCmd = cmd;
+            console.log(`✅ Using Python command: ${pythonCmd} (with playwright support)`);
+            break;
+          }
         } catch (e) {
+          console.log(`❌ Python command failed: ${cmd} - ${e.message}`);
           continue;
         }
       }
       
+      if (!pythonCmd) {
+        // Fallback: try to find any working python
+        for (const cmd of ['python3', 'python']) {
+          try {
+            require('child_process').execSync(`${cmd} --version`, { stdio: 'pipe' });
+            pythonCmd = cmd;
+            console.log(`⚠️ Using Python command without playwright verification: ${pythonCmd}`);
+            break;
+          } catch (e) {
+            continue;
+          }
+        }
+      }
+      
+      if (!pythonCmd) {
+        return res.status(500).json({ 
+          error: 'No working Python installation found',
+          details: 'Unable to find a working Python interpreter'
+        });
+      }
+      
+      // UPDATED: Set environment variables to ensure virtual environment is used
+      const pythonEnv = {
+        ...process.env,
+        PYTHONUNBUFFERED: '1',
+        PATH: '/opt/venv/bin:' + process.env.PATH,  // Prioritize venv
+        VIRTUAL_ENV: '/opt/venv',                    // Set virtual environment
+        PYTHONPATH: '/opt/venv/lib/python3.11/site-packages'  // Ensure Python can find packages
+      };
+      
       const command = `${pythonCmd} "${scriptPath}" --topic "${topicCode}"`;
       console.log(`Executing: ${command}`);
       console.log(`Working directory: ${__dirname}`);
+      console.log(`Python environment PATH: ${pythonEnv.PATH}`);
       
       const child = exec(command, { 
         cwd: __dirname,
-        env: { ...process.env, PYTHONUNBUFFERED: '1' },
+        env: pythonEnv,  // Use updated environment
         timeout: 240000 // 4 minute timeout
       });
       
@@ -301,7 +375,12 @@ app.post('/api/download-pdf', async (req, res) => {
             details: { 
               message: 'The PDF download process failed',
               stdout: stdoutData,
-              stderr: stderrData
+              stderr: stderrData,
+              pythonCommand: pythonCmd,
+              environment: {
+                PATH: pythonEnv.PATH,
+                VIRTUAL_ENV: pythonEnv.VIRTUAL_ENV
+              }
             } 
           });
         }
