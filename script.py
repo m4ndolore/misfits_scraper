@@ -1,4 +1,4 @@
-# Back to browser approach but with minimal, stable configuration
+# Back to browser approach but with minimal, stable configuration + better timing
 from playwright.sync_api import sync_playwright
 import os
 import argparse
@@ -28,32 +28,32 @@ def run():
             
             # Simple context - no special configuration
             page = browser.new_page()
-            page.set_default_timeout(60000)  # Longer timeout
+            page.set_default_timeout(90000)  # Increased to 90 seconds
             
             print("🔄 Navigating to topics search page...")
-            page.goto("https://www.dodsbirsttr.mil/topics-app/", timeout=120000)  # 2 minute timeout
+            page.goto("https://www.dodsbirsttr.mil/topics-app/", timeout=180000)  # 3 minute timeout
             print("✅ Page loaded")
             
             # Wait longer for the page to fully initialize
             print("⏳ Waiting for page to fully load...")
-            time.sleep(5)  # Simple sleep instead of complex waits
+            time.sleep(8)  # Increased from 5 to 8 seconds
             
             # Try to find search input with longer wait
             print("🔍 Looking for search input...")
             search_input = page.locator('input[aria-label="Search"]')
             
             # Wait for search input to be visible and enabled
-            search_input.wait_for(state="visible", timeout=30000)
-            time.sleep(2)  # Additional wait
+            search_input.wait_for(state="visible", timeout=45000)  # Increased timeout
+            time.sleep(3)  # Additional wait
             
             print(f"🔍 Searching for topic: {topic_code}...")
             search_input.fill(topic_code)
-            time.sleep(1)  # Wait between fill and click
+            time.sleep(2)  # Increased wait between fill and click
             
             # Try clicking search button with error handling
             try:
                 search_button = page.locator('#searchButton')
-                search_button.wait_for(state="visible", timeout=10000)
+                search_button.wait_for(state="visible", timeout=15000)
                 search_button.click()
                 print("✅ Search button clicked")
             except Exception as search_error:
@@ -62,29 +62,37 @@ def run():
                 print("🔄 Trying Enter key instead...")
                 search_input.press("Enter")
             
-            # Wait for search results
+            # Wait longer for search results
             print("⏳ Waiting for search results...")
-            time.sleep(5)  # Give time for results to load
+            time.sleep(8)  # Increased from 5 to 8 seconds
             
-            # Look for topic in results
+            # Look for topic in results with retry logic
             print("🔍 Looking for topic in results...")
-            topic_elements = page.locator(f".topic-number-status:has-text('{topic_code}')")
+            topic_elements = None
             
-            if topic_elements.count() == 0:
-                print(f"❌ Topic {topic_code} not found in search results")
+            # Retry logic for finding topic (sometimes results load slowly)
+            for attempt in range(3):
+                topic_elements = page.locator(f".topic-number-status:has-text('{topic_code}')")
+                if topic_elements.count() > 0:
+                    break
+                print(f"⏳ Attempt {attempt + 1}/3: Topic not found yet, waiting...")
+                time.sleep(5)
+            
+            if not topic_elements or topic_elements.count() == 0:
+                print(f"❌ Topic {topic_code} not found in search results after all attempts")
                 return None
             
             print("🖱️ Clicking on topic...")
             topic_elements.first.click()
             
-            # Wait for topic details page to load
+            # Wait longer for topic details page to load
             print("⏳ Waiting for topic details to load...")
-            time.sleep(5)
+            time.sleep(8)  # Increased wait time
             
             # Try to download PDF
             print("⬇️ Looking for PDF download link...")
             
-            # Try multiple selectors for PDF download
+            # Try multiple selectors for PDF download with retry
             pdf_selectors = [
                 'a[title="Download PDF"]',
                 'a:has-text("Download PDF")',
@@ -94,40 +102,55 @@ def run():
             ]
             
             pdf_link = None
-            for selector in pdf_selectors:
-                links = page.locator(selector)
-                if links.count() > 0:
-                    pdf_link = links.first
-                    print(f"✅ Found PDF link with selector: {selector}")
+            # Retry logic for finding PDF link
+            for attempt in range(3):
+                for selector in pdf_selectors:
+                    links = page.locator(selector)
+                    if links.count() > 0:
+                        pdf_link = links.first
+                        print(f"✅ Found PDF link with selector: {selector}")
+                        break
+                
+                if pdf_link:
                     break
+                    
+                print(f"⏳ Attempt {attempt + 1}/3: PDF link not found yet, waiting...")
+                time.sleep(5)
             
             if not pdf_link:
-                print("❌ No PDF download link found")
+                print("❌ No PDF download link found after all attempts")
                 return None
             
             print("⬇️ Starting PDF download...")
             
-            # Handle download
-            with page.expect_download(timeout=120000) as download_info:  # 2 minute timeout
-                pdf_link.click()
-            
-            download = download_info.value
-            
-            # Save the file
-            suggested_name = download.suggested_filename
-            if not suggested_name or not suggested_name.endswith('.PDF'):
-                # Generate our own filename if needed
-                suggested_name = f"topic_{topic_code}.PDF"
-            
-            file_path = os.path.join(os.getcwd(), suggested_name)
-            download.save_as(file_path)
-            
-            # Verify file was saved
-            if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
-                print(f"✅ PDF saved to: {file_path}")
-                return file_path
-            else:
-                print("❌ PDF file was not saved properly")
+            # Handle download with much longer timeout
+            try:
+                with page.expect_download(timeout=300000) as download_info:  # 5 minute timeout!
+                    pdf_link.click()
+                    print("⏳ Download started, waiting for completion...")
+                
+                download = download_info.value
+                print(f"✅ Download completed: {download.suggested_filename}")
+                
+                # Save the file
+                suggested_name = download.suggested_filename
+                if not suggested_name or not suggested_name.endswith('.PDF'):
+                    # Generate our own filename if needed
+                    suggested_name = f"topic_{topic_code}.PDF"
+                
+                file_path = os.path.join(os.getcwd(), suggested_name)
+                download.save_as(file_path)
+                
+                # Verify file was saved
+                if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
+                    print(f"✅ PDF saved to: {file_path}")
+                    return file_path
+                else:
+                    print("❌ PDF file was not saved properly")
+                    return None
+                    
+            except Exception as download_error:
+                print(f"❌ Download failed: {download_error}")
                 return None
                 
     except Exception as e:
