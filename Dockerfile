@@ -44,7 +44,7 @@ COPY package*.json ./
 # Install npm dependencies
 RUN npm ci --only=production
 
-# Install Playwright browsers explicitly
+# Install Node.js Playwright browsers
 RUN npx playwright install chromium
 RUN npx playwright install-deps chromium
 
@@ -52,10 +52,14 @@ RUN npx playwright install-deps chromium
 COPY requirements.txt* ./
 RUN if [ -f requirements.txt ]; then pip install --no-cache-dir -r requirements.txt; fi
 
+# Install Python Playwright browsers (after installing playwright python package)
+RUN if [ -f requirements.txt ] && grep -q "playwright" requirements.txt; then playwright install chromium; fi
+
 # Verify installations
 RUN npx playwright --version
 RUN python --version
 RUN pip --version
+RUN if command -v playwright > /dev/null; then playwright --version; fi
 
 # Copy the rest of the application code
 COPY . .
