@@ -29,12 +29,14 @@ RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
     python3-venv \
+    python3-full \
     && rm -rf /var/lib/apt/lists/*
 
-# Create symbolic link for python command (optional, for compatibility)
-RUN ln -s /usr/bin/python3 /usr/bin/python
-
 WORKDIR /app
+
+# Create Python virtual environment
+RUN python3 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
 # Copy package files first for better caching
 COPY package*.json ./
@@ -46,15 +48,14 @@ RUN npm ci --only=production
 RUN npx playwright install chromium
 RUN npx playwright install-deps chromium
 
-# Copy requirements.txt if it exists and install Python dependencies
+# Copy requirements.txt if it exists and install Python dependencies in virtual environment
 COPY requirements.txt* ./
-RUN if [ -f requirements.txt ]; then pip3 install --no-cache-dir -r requirements.txt; fi
+RUN if [ -f requirements.txt ]; then pip install --no-cache-dir -r requirements.txt; fi
 
 # Verify installations
 RUN npx playwright --version
-RUN python3 --version
-RUN pip3 --version
-RUN ls -la /root/.cache/ms-playwright/ || echo "Playwright cache not found"
+RUN python --version
+RUN pip --version
 
 # Copy the rest of the application code
 COPY . .
