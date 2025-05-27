@@ -42,7 +42,53 @@ console.log(`Frontend path exists: ${fs.existsSync(frontendPath)}`);
 console.log(`Downloads directory exists: ${fs.existsSync(downloadsDir)}`);
 
 console.log('=== PYTHON ENVIRONMENT CHECK ===');
+console.log('=== DETAILED PYTHON DEBUG ===');
 
+// Check if virtual environment exists and what's in it
+if (fs.existsSync('/opt/venv')) {
+  console.log('✅ Virtual environment directory exists');
+  
+  if (fs.existsSync('/opt/venv/bin/python')) {
+    console.log('✅ /opt/venv/bin/python exists');
+    try {
+      const venvPythonVersion = require('child_process').execSync('/opt/venv/bin/python --version', { stdio: 'pipe' }).toString().trim();
+      console.log('✅ Virtual env Python version:', venvPythonVersion);
+      
+      // Test playwright import specifically
+      try {
+        const playwrightImport = require('child_process').execSync('/opt/venv/bin/python -c "import playwright.sync_api; print(playwright.__version__)"', { stdio: 'pipe', timeout: 10000 }).toString().trim();
+        console.log('✅ Playwright version in venv:', playwrightImport);
+      } catch (playwrightErr) {
+        console.error('❌ Playwright import failed in venv:', playwrightErr.message);
+        
+        // List installed packages
+        try {
+          const pipList = require('child_process').execSync('/opt/venv/bin/python -m pip list', { stdio: 'pipe' }).toString();
+          console.log('📦 All packages in venv:');
+          console.log(pipList);
+        } catch (pipErr) {
+          console.error('❌ Could not list pip packages:', pipErr.message);
+        }
+      }
+    } catch (err) {
+      console.error('❌ Error checking venv python:', err.message);
+    }
+  } else {
+    console.error('❌ /opt/venv/bin/python does not exist');
+    
+    // List what's actually in the bin directory
+    try {
+      const binContents = fs.readdirSync('/opt/venv/bin');
+      console.log('📁 Contents of /opt/venv/bin:', binContents);
+    } catch (e) {
+      console.log('❌ Could not read /opt/venv/bin directory');
+    }
+  }
+} else {
+  console.error('❌ Virtual environment directory /opt/venv does not exist');
+}
+
+console.log('=================================');
 // Check virtual environment Python
 const venvPython = '/opt/venv/bin/python';
 try {
@@ -239,7 +285,7 @@ app.get('/', (req, res) => {
   }
 });
 
-// PDF download endpoint (existing)
+// PDF download endpoint (existing) - UPDATED PYTHON EXECUTION
 app.post('/api/download-pdf', async (req, res) => {
     console.log('Received download request with body:', req.body);
     const { topicCode } = req.body;
@@ -273,55 +319,83 @@ app.post('/api/download-pdf', async (req, res) => {
         fs.mkdirSync(downloadsDir, { recursive: true });
       }
       
-      // UPDATED: Try different Python paths including virtual environment
-      const pythonCommands = [
-        '/opt/venv/bin/python',    // Virtual environment python (Docker)
-        '/opt/venv/bin/python3',   // Virtual environment python3 (Docker)
-        'python3',                 // System python3
-        'python',                  // System python
-        '/usr/bin/python3'         // Absolute path to system python3
-      ];
-      
+// Replace the Python command detection section in your /api/download-pdf endpoint with this:
+
+      // UPDATED: Force use of virtual environment Python
       let pythonCmd = null;
       
-      // Find working Python command
-      for (const cmd of pythonCommands) {
-        try {
-          // Test if the command exists and can import playwright
-          const testResult = require('child_process').execSync(
-            `${cmd} -c "import playwright.sync_api; print('OK')"`, 
-            { stdio: 'pipe', timeout: 5000 }
-          ).toString().trim();
-          
-          if (testResult === 'OK') {
-            pythonCmd = cmd;
-            console.log(`✅ Using Python command: ${pythonCmd} (with playwright support)`);
-            break;
-          }
-        } catch (e) {
-          console.log(`❌ Python command failed: ${cmd} - ${e.message}`);
-          continue;
-        }
-      }
+      // First, try to use virtual environment Python directly
+      const venvPythonPaths = [
+        '/opt/venv/bin/python',
+        '/opt/venv/bin/python3'
+      ];
       
-      if (!pythonCmd) {
-        // Fallback: try to find any working python
-        for (const cmd of ['python3', 'python']) {
+      for (const venvPath of venvPythonPaths) {
+        if (fs.existsSync(venvPath)) {
           try {
-            require('child_process').execSync(`${cmd} --version`, { stdio: 'pipe' });
-            pythonCmd = cmd;
-            console.log(`⚠️ Using Python command without playwright verification: ${pythonCmd}`);
-            break;
+            // Test if this python can import playwright
+            const testResult = require('child_process').execSync(
+              `${venvPath} -c "import playwright.sync_api; print('OK')"`, 
+              { stdio: 'pipe', timeout: 10000 }
+            ).toString().trim();
+            
+            if (testResult === 'OK') {
+              pythonCmd = venvPath;
+              console.log(`✅ Using virtual environment Python: ${pythonCmd} (with playwright support)`);
+              break;
+            }
           } catch (e) {
-            continue;
+            console.log(`❌ Virtual env Python failed: ${venvPath} - ${e.message}`);
+          }
+        } else {
+          console.log(`❌ Virtual env Python not found: ${venvPath}`);
+        }
+      }
+      
+      // If virtual environment Python failed, try system python as fallback
+      if (!pythonCmd) {
+        console.log('⚠️ Virtual environment Python failed, trying system python...');
+        const systemPythonCommands = ['python3', 'python', '/usr/bin/python3'];
+        
+        for (const cmd of systemPythonCommands) {
+          try {
+            const testResult = require('child_process').execSync(
+              `${cmd} -c "import playwright.sync_api; print('OK')"`, 
+              { stdio: 'pipe', timeout: 5000 }
+            ).toString().trim();
+            
+            if (testResult === 'OK') {
+              pythonCmd = cmd;
+              console.log(`⚠️ Using system Python: ${pythonCmd} (with playwright support)`);
+              break;
+            }
+          } catch (e) {
+            console.log(`❌ System Python failed: ${cmd} - ${e.message}`);
           }
         }
       }
       
       if (!pythonCmd) {
+        console.error('❌ No Python with Playwright support found');
+        
+        // Debug: List what's actually in the virtual environment
+        try {
+          if (fs.existsSync('/opt/venv/bin')) {
+            const venvContents = fs.readdirSync('/opt/venv/bin');
+            console.log('📁 Virtual env bin contents:', venvContents);
+          }
+          
+          if (fs.existsSync('/opt/venv/lib')) {
+            const libContents = fs.readdirSync('/opt/venv/lib');
+            console.log('📁 Virtual env lib contents:', libContents);
+          }
+        } catch (debugError) {
+          console.log('❌ Could not debug virtual environment');
+        }
+        
         return res.status(500).json({ 
-          error: 'No working Python installation found',
-          details: 'Unable to find a working Python interpreter'
+          error: 'No working Python installation with Playwright found',
+          details: 'Unable to find a Python interpreter that can import playwright'
         });
       }
       
