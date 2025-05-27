@@ -1,199 +1,252 @@
-# Updated script.py with more stable browser launch
-from playwright.sync_api import sync_playwright
+# Hybrid approach: Use requests for search API, Playwright only for final download
+import requests
+import json
 import os
 import argparse
+from playwright.sync_api import sync_playwright
 import time
-
-# Remove user_data_dir - it's causing issues in Docker
-# user_data_dir = os.path.expanduser("~/.sbir-session")  # Comment this out
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--topic', required=True, help='Topic Code (e.g., A254-016)')
 args = parser.parse_args()
 topic_code = args.topic
 
-def save_debug_screenshot(page, filename):
-    """Helper function to save debug screenshots"""
-    try:
-        screenshot_dir = os.path.join(os.getcwd(), 'debug_screenshots')
-        os.makedirs(screenshot_dir, exist_ok=True)
-        screenshot_path = os.path.join(screenshot_dir, filename)
-        page.screenshot(path=screenshot_path)
-        print(f"📸 Debug screenshot saved to: {screenshot_path}")
-        return screenshot_path
-    except Exception as e:
-        print(f"⚠️ Could not save screenshot: {e}")
-        return None
-
-def run():
-    browser = None
-    page = None
+def search_topic_via_api(topic_code):
+    """Search for topic using direct API calls instead of browser automation"""
+    print(f"🔍 Searching for topic via API: {topic_code}...")
+    
+    # This is the API endpoint the site uses for search
+    search_url = "https://www.dodsbirsttr.mil/topics/api/public/topics/search"
+    
+    # Search parameters (from analyzing the working browser requests)
+    search_params = {
+        "searchParam": json.dumps({
+            "searchText": topic_code,
+            "components": None,
+            "programYear": None,
+            "solicitationCycleNames": ["openTopics"],
+            "releaseNumbers": [],
+            "topicReleaseStatus": [591, 592],
+            "modernizationPriorities": [],
+            "sortBy": "finalTopicCode,asc",
+            "technologyAreaIds": [],
+            "component": None,
+            "program": None
+        }),
+        "size": 10,
+        "page": 0
+    }
+    
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Referer': 'https://www.dodsbirsttr.mil/topics-app/',
+        'Origin': 'https://www.dodsbirsttr.mil'
+    }
     
     try:
-        print("🚀 Launching browser in headless mode...")
+        response = requests.get(search_url, params=search_params, headers=headers, timeout=30)
+        print(f"🔍 Search API response: {response.status_code}")
+        
+        if response.status_code == 200:
+            data = response.json()
+            
+            if 'content' in data and len(data['content']) > 0:
+                # Find exact topic match
+                for topic in data['content']:
+                    if topic.get('finalTopicCode') == topic_code:
+                        print(f"✅ Found topic: {topic.get('topicTitle', 'Unknown Title')}")
+                        return topic
+                
+                print(f"❌ Topic {topic_code} not found in search results")
+                return None
+            else:
+                print("❌ No search results returned")
+                return None
+        else:
+            print(f"❌ Search API failed with status {response.status_code}")
+            return None
+            
+    except Exception as e:
+        print(f"❌ API search error: {e}")
+        return None
+
+def download_pdf_direct(topic_data):
+    """Try to download PDF directly using the API"""
+    if not topic_data:
+        return None
+    
+    topic_id = topic_data.get('id')
+    if not topic_id:
+        print("❌ No topic ID found")
+        return None
+    
+    # Direct PDF download URL pattern
+    pdf_url = f"https://www.dodsbirsttr.mil/topics/api/public/topics/{topic_id}/download/PDF"
+    
+    print(f"⬇️ Attempting direct PDF download from: {pdf_url}")
+    
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/pdf,application/octet-stream,*/*',
+        'Referer': 'https://www.dodsbirsttr.mil/topics-app/',
+    }
+    
+    try:
+        response = requests.get(pdf_url, headers=headers, timeout=60, stream=True)
+        
+        if response.status_code == 200:
+            # Generate filename from topic data
+            topic_title = topic_data.get('topicTitle', '').replace('/', '-').replace('\\', '-')
+            # Clean filename
+            import re
+            topic_title = re.sub(r'[^\w\s\-_.]', '', topic_title)
+            filename = f"topic_{topic_code}_{topic_title}.PDF"
+            
+            file_path = os.path.join(os.getcwd(), filename)
+            
+            # Save the PDF
+            with open(file_path, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+            
+            if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
+                print(f"✅ PDF saved to: {file_path}")
+                return file_path
+            else:
+                print("❌ PDF file is empty or not saved properly")
+                return None
+        else:
+            print(f"❌ PDF download failed with status {response.status_code}")
+            return None
+            
+    except Exception as e:
+        print(f"❌ Direct PDF download error: {e}")
+        return None
+
+def download_pdf_with_playwright(topic_data):
+    """Fallback: Use Playwright for PDF download if direct download fails"""
+    print("🔄 Trying Playwright fallback for PDF download...")
+    
+    browser = None
+    
+    try:
         with sync_playwright() as p:
-            # Use simpler browser launch instead of persistent context
             browser = p.chromium.launch(
                 headless=True,
                 args=[
                     '--no-sandbox',
                     '--disable-setuid-sandbox',
                     '--disable-dev-shm-usage',
-                    '--disable-accelerated-2d-canvas',
-                    '--no-first-run',
-                    '--no-zygote',
-                    '--single-process',
                     '--disable-gpu',
-                    '--disable-web-security',
-                    '--disable-features=VizDisplayCompositor',
-                    # Add these for better Docker stability
-                    '--disable-background-timer-throttling',
-                    '--disable-backgrounding-occluded-windows',
-                    '--disable-renderer-backgrounding',
+                    '--single-process',
                     '--disable-extensions',
                     '--disable-plugins',
                     '--disable-default-apps',
+                    '--disable-background-timer-throttling',
+                    '--disable-backgrounding-occluded-windows',
+                    '--disable-renderer-backgrounding',
                     '--no-default-browser-check',
                     '--disable-hang-monitor',
                     '--disable-popup-blocking',
-                    '--disable-prompt-on-repost',
-                    '--no-service-autorun',
-                    '--disable-sync',
-                    '--disable-translate',
                     '--hide-scrollbars',
-                    '--mute-audio'
+                    '--mute-audio',
+                    '--disable-sync',
+                    '--disable-translate'
                 ]
             )
             
-            # Create a new context and page
             context = browser.new_context(
-                viewport={'width': 1920, 'height': 1080},
-                user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                viewport={'width': 1920, 'height': 1080}
             )
             page = context.new_page()
             page.set_default_timeout(30000)
-
-            # Enable request/response logging
-            def log_request(request):
-                print(f"→ {request.method} {request.url}")
             
-            def log_response(response):
-                print(f"← {response.status} {response.url}")
+            # Navigate directly to topic details page
+            topic_id = topic_data.get('id')
+            topic_url = f"https://www.dodsbirsttr.mil/topics-app/details/{topic_id}"
             
-            page.on("request", log_request)
-            page.on("response", log_response)
-
-            print("🔄 Navigating to topics search page...")
-            page.goto("https://www.dodsbirsttr.mil/topics-app/", timeout=90000)
-            print("✅ Page loaded successfully")
-            save_debug_screenshot(page, 'initial_page.png')
-
-            # Wait for search input
-            print("⏳ Waiting for search input...")
-            page.wait_for_selector('input[aria-label="Search"]', timeout=15000)
-            print("✅ Search input found")
-
-            # Search for topic
-            print(f"🔍 Searching for topic: {topic_code}...")
-            page.fill('input[aria-label="Search"]', topic_code)
-            page.click('#searchButton')
-            page.wait_for_timeout(3000)  # Wait for results
-
-            print("🖱️ Clicking first topic result...")
-            topic_locator = page.locator(".topic-number-status", has_text=topic_code)
-            if topic_locator.count() == 0:
-                print("❌ Topic not found in search results.")
-                save_debug_screenshot(page, 'no_results.png')
-                return None
-
-            topic_locator.first.click()
+            print(f"🔄 Navigating to topic details: {topic_url}")
+            page.goto(topic_url, timeout=60000)
             page.wait_for_load_state("networkidle")
-            page.wait_for_timeout(2000)
-
-            print("⬇️ Attempting PDF download...")
             
-            # More robust download handling
+            # Try to download PDF
             try:
-                # First check if the download button exists
-                download_button = page.locator('a[title="Download PDF"]')
-                if download_button.count() == 0:
-                    print("❌ PDF download button not found")
-                    save_debug_screenshot(page, 'no_download_button.png')
-                    return None
-                
-                # Wait for the download with longer timeout
-                with page.expect_download(timeout=120000) as download_info:  # 2 minute timeout
-                    download_button.click(timeout=30000)  # 30 second click timeout
+                with page.expect_download(timeout=60000) as download_info:
+                    # Try multiple possible selectors for PDF download
+                    selectors = [
+                        'a[title="Download PDF"]',
+                        'a:has-text("Download PDF")',
+                        'a:has-text("PDF")',
+                        '.pdf-download',
+                        '[data-testid="pdf-download"]'
+                    ]
+                    
+                    download_clicked = False
+                    for selector in selectors:
+                        try:
+                            if page.locator(selector).count() > 0:
+                                page.click(selector, timeout=10000)
+                                download_clicked = True
+                                break
+                        except:
+                            continue
+                    
+                    if not download_clicked:
+                        raise Exception("Could not find PDF download button")
 
                 download = download_info.value
                 file_path = os.path.join(os.getcwd(), download.suggested_filename)
-                
-                print(f"💾 Saving download to: {file_path}")
                 download.save_as(file_path)
 
-                if not os.path.exists(file_path):
-                    raise Exception("Failed to save PDF file")
+                if os.path.exists(file_path):
+                    print(f"✅ PDF saved via Playwright: {file_path}")
+                    return file_path
+                else:
+                    raise Exception("PDF file not saved")
                     
-                print(f"✅ PDF saved to: {file_path}")
-                return file_path
-                
             except Exception as download_error:
-                print(f"❌ Download failed: {download_error}")
-                save_debug_screenshot(page, 'download_failed.png')
+                print(f"❌ Playwright download failed: {download_error}")
+                return None
                 
-                # Try alternative download method if available
-                try:
-                    print("🔄 Trying alternative download method...")
-                    # Sometimes the link is different
-                    alt_download = page.locator('a:has-text("Download"), a:has-text("PDF")')
-                    if alt_download.count() > 0:
-                        with page.expect_download(timeout=60000) as alt_download_info:
-                            alt_download.first.click()
-                        
-                        alt_download = alt_download_info.value
-                        alt_file_path = os.path.join(os.getcwd(), alt_download.suggested_filename)
-                        alt_download.save_as(alt_file_path)
-                        
-                        if os.path.exists(alt_file_path):
-                            print(f"✅ PDF saved via alternative method: {alt_file_path}")
-                            return alt_file_path
-                except Exception as alt_error:
-                    print(f"❌ Alternative download also failed: {alt_error}")
-                
-                raise download_error
-
     except Exception as e:
-        print(f"❌ Error during download: {e}")
-        if page:
-            save_debug_screenshot(page, 'download_error.png')
-        raise
+        print(f"❌ Playwright error: {e}")
+        return None
     
     finally:
-        # Safer cleanup
-        print("🧹 Cleaning up browser resources...")
-        
-        try:
-            if page and not page.is_closed():
-                page.close()
-                print("✅ Page closed")
-        except Exception as page_cleanup_error:
-            print(f"⚠️ Page cleanup warning (non-fatal): {page_cleanup_error}")
-        
-        try:
-            if 'context' in locals() and context:
-                context.close()
-                print("✅ Context closed")
-        except Exception as context_cleanup_error:
-            print(f"⚠️ Context cleanup warning (non-fatal): {context_cleanup_error}")
-        
-        try:
-            if browser and not browser.is_closed():
+        if browser:
+            try:
                 browser.close()
                 print("✅ Browser closed")
-        except Exception as browser_cleanup_error:
-            print(f"⚠️ Browser cleanup warning (non-fatal): {browser_cleanup_error}")
+            except:
+                pass
+
+def run():
+    """Main execution function"""
+    try:
+        # Step 1: Search for topic using API
+        topic_data = search_topic_via_api(topic_code)
+        if not topic_data:
+            print(f"❌ Could not find topic {topic_code}")
+            return None
         
-        print("✅ Cleanup completed")
+        # Step 2: Try direct PDF download first
+        pdf_path = download_pdf_direct(topic_data)
+        if pdf_path:
+            return pdf_path
+        
+        # Step 3: Fallback to Playwright if direct download failed
+        print("🔄 Direct download failed, trying Playwright fallback...")
+        pdf_path = download_pdf_with_playwright(topic_data)
+        return pdf_path
+        
+    except Exception as e:
+        print(f"❌ Error in main execution: {e}")
+        return None
 
 if __name__ == "__main__":
-    run()
+    result = run()
+    if not result:
+        exit(1)
