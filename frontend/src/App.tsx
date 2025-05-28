@@ -292,8 +292,8 @@ const AppContent: React.FC<AppContentProps> = ({
     }
   };
 
-  // API base URL - use relative URLs since frontend and backend are on same domain
-  const API_BASE_URL = '';  // Empty string for same-origin requests
+  // API base URL - point to the backend server
+  const API_BASE_URL = 'http://localhost:3001';  // Backend server running on port 3001
 
   // Download official PDF function
   const downloadOfficialPdf = async (topicCode: string): Promise<void> => {
