@@ -27,6 +27,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
           <label className="block mb-2">Components</label>
           <Select
             isMulti
+            closeMenuOnSelect={false}
             options={schema.components}
             value={schema.components.filter(option => 
               selectedFilters.components?.includes(option.value) || false
@@ -42,6 +43,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
           <label className="block mb-2">Programs</label>
           <Select
             isMulti
+            closeMenuOnSelect={false}
             options={schema.programs}
             value={schema.programs.filter(option => 
               selectedFilters.programs?.includes(option.value) || false
@@ -57,6 +59,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
           <label className="block mb-2">Modernization Priorities</label>
           <Select
             isMulti
+            closeMenuOnSelect={false}
             options={schema.modernizationPriorities}
             value={schema.modernizationPriorities.filter(option => 
               selectedFilters.modernizationPriorities?.includes(option.value) || false
@@ -72,12 +75,29 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
           <label className="block mb-2">Topic Status</label>
           <Select
             isMulti
+            closeMenuOnSelect={false}
             options={schema.topicStatuses}
             value={schema.topicStatuses.filter(option => 
               selectedFilters.topicStatuses?.includes(option.value) || false
             )}
             onChange={(selected) => 
               onFilterChange('topicStatuses', selected ? selected.map(s => s.value) : [])
+            }
+            className="text-black"
+          />
+        </div>
+
+        <div>
+          <label className="block mb-2">Technology Areas</label>
+          <Select
+            isMulti
+            closeMenuOnSelect={false}
+            options={schema.technologyAreas}
+            value={schema.technologyAreas.filter(option => 
+              selectedFilters.technologyAreas?.includes(option.value) || false
+            )}
+            onChange={(selected) => 
+              onFilterChange('technologyAreas', selected ? selected.map(s => s.value) : [])
             }
             className="text-black"
           />

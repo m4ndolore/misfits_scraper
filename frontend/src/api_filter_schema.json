@@ -19,7 +19,8 @@
   ],
   "topicReleaseStatus": {
     "591": "Open",
-    "592": "Closed"
+    "592": "Pre-Release",
+    "593": "Closed"
   },
   "modernizationPriorities": [
     "5G",

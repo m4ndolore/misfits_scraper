@@ -78,6 +78,14 @@ export const FilterProvider = ({ children }: { children: ReactNode }) => {
           }));
         }
         
+        // Process technology areas from the schema
+        if (Array.isArray(rawData.technologyAreaIds)) {
+          transformedData.technologyAreas = rawData.technologyAreaIds.map((item: {id: number, name: string}) => ({
+            value: item.name,
+            label: item.name
+          }));
+        }
+        
         setSchema(transformedData);
       } catch (err) {
         console.error('Failed to load filter schema:', err);

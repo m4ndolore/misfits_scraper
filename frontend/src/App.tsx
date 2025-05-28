@@ -38,9 +38,16 @@ const AppContent: React.FC<AppContentProps> = ({
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(25);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalResults, setTotalResults] = useState(0);
   const [fontSize, setFontSize] = useState<FontSize>('medium');
-  const [filters, setFilters] = useState<Record<string, string[]>>({});
-  const [appliedFilters, setAppliedFilters] = useState<Record<string, string[]>>({});
+  // Initialize with Open and Pre-release status filters by default
+  const [filters, setFilters] = useState<Record<string, string[]>>({
+    topicStatuses: ['591', '592'] // 591 = Open, 592 = Pre-release
+  });
+  // Initialize applied filters with the same default values
+  const [appliedFilters, setAppliedFilters] = useState<Record<string, string[]>>({
+    topicStatuses: ['591', '592'] // 591 = Open, 592 = Pre-release
+  });
   const [selectedPdfIds, setSelectedPdfIds] = useState<Set<string>>(new Set());
   const [sortColumn, setSortColumn] = useState<keyof Topic | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
@@ -151,11 +158,14 @@ const AppContent: React.FC<AppContentProps> = ({
         topicStatus: t.topicStatus
       })));
 
+      const totalCount = res.data.total || 0;
       onTopicsChange(transformedTopics);
-      setTotalPages(Math.ceil((res.data.total || 0) / rowsPerPage));
+      setTotalResults(totalCount);
+      setTotalPages(Math.ceil(totalCount / rowsPerPage));
     } catch (error) {
       console.error('Error fetching topics:', error);
       onTopicsChange([]);
+      setTotalResults(0);
       setTotalPages(1);
     }
   }, [appliedFilters, searchTerm, rowsPerPage, page, onTopicsChange]);
@@ -608,8 +618,17 @@ const AppContent: React.FC<AppContentProps> = ({
           </div>
         )}
 
+        {/* Results Count */}
+        <div className="mt-4 mb-3">
+          <div className="d-flex justify-content-between align-items-center">
+            <h5 className="mb-0">
+              <span className="text-primary font-weight-bold">{totalResults}</span> {totalResults === 1 ? 'result' : 'results'} found
+            </h5>
+          </div>
+        </div>
+
         {/* Results Table & Pagination */}
-        <div className="mt-4">
+        <div className="mt-2">
           <TopicsTable
             topics={topics}
             selectedTopicCodes={selectedTopicCodes}  

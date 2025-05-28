@@ -322,7 +322,7 @@ const TopicsTable: React.FC<Props> = ({
                 onClick={() => handleRowClick(topic)}
                 style={{ cursor: 'pointer' }}
               >
-                {topic.topicManagers?.[0]?.name || <span className="text-muted">N/A</span>}
+                {topic.topicManagers?.[0]?.name || <span className="text-muted">Not Provided</span>}
               </td>
               
               <td onClick={(e) => e.stopPropagation()}> {/* Prevent row click for email links */}
@@ -331,7 +331,7 @@ const TopicsTable: React.FC<Props> = ({
                     {topic.topicManagers[0].email}
                   </a>
                 ) : (
-                  <span className="text-muted">N/A</span>
+                  <span className="text-muted">Not Provided</span>
                 )}
               </td>
               
@@ -341,7 +341,7 @@ const TopicsTable: React.FC<Props> = ({
                     {topic.topicManagers[0].phone}
                   </a>
                 ) : (
-                  <span className="text-muted">N/A</span>
+                  <span className="text-muted">Not Provided</span>
                 )}
               </td>
               
