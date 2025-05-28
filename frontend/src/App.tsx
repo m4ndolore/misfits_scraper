@@ -121,18 +121,35 @@ const AppContent: React.FC<AppContentProps> = ({
       const res = await axios.get<{ data: ApiTopicForFetch[], total: number }>(url);
       const apiTopics = res.data.data || [];
       
-      const transformedTopics: Topic[] = apiTopics.map(topic => ({
-        topicCode: topic.topicCode,
-        topicId: topic.topicId,
-        topicTitle: topic.topicTitle || "N/A",
-        numQuestions: topic.noOfPublishedQuestions || 0,
-        phaseHierarchy: topic.phaseHierarchy || "",
-        component: topic.component || "N/A",
-        program: topic.program || "N/A",
-        topicStatus: topic.topicStatus || "N/A",
-        solicitationTitle: topic.solicitationTitle || "N/A",
-        topicManagers: topic.topicManagers || [],
-      }));
+      // Debug: Log raw API topic data with status values
+      console.log('Raw API topic data with status values:', apiTopics.map(t => ({
+        topicCode: t.topicCode,
+        topicStatus: t.topicStatus
+      })));
+      
+      const transformedTopics: Topic[] = apiTopics.map(topic => {
+        // Debug: Log individual topic status before transformation
+        console.log(`Topic ${topic.topicCode} status before transform:`, topic.topicStatus);
+        
+        return {
+          topicCode: topic.topicCode,
+          topicId: topic.topicId,
+          topicTitle: topic.topicTitle || "N/A",
+          numQuestions: topic.noOfPublishedQuestions || 0,
+          phaseHierarchy: topic.phaseHierarchy || "",
+          component: topic.component || "N/A",
+          program: topic.program || "N/A",
+          topicStatus: topic.topicStatus || "N/A",
+          solicitationTitle: topic.solicitationTitle || "N/A",
+          topicManagers: topic.topicManagers || [],
+        };
+      });
+      
+      // Debug: Log transformed topics with their status values
+      console.log('Transformed topics with status values:', transformedTopics.map(t => ({
+        topicCode: t.topicCode,
+        topicStatus: t.topicStatus
+      })));
 
       onTopicsChange(transformedTopics);
       setTotalPages(Math.ceil((res.data.total || 0) / rowsPerPage));
