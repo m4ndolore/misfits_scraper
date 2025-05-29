@@ -23,10 +23,12 @@ console.log(`PORT environment variable: ${process.env.PORT}`);
 console.log(`NODE_ENV: ${process.env.NODE_ENV}`);
 console.log('===============================');
 
-// Enable CORS for all routes
+// Enable CORS for all routes - explicitly allow the Vite dev server
 app.use(cors({
-  origin: true,
-  credentials: true
+  origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Accept', 'Authorization']
 }));
 
 app.use(express.json());
@@ -321,16 +323,18 @@ app.post('/api/download-pdf', async (req, res) => {
       
 // Replace the Python command detection section in your /api/download-pdf endpoint with this:
 
-      // UPDATED: Force use of virtual environment Python
+      // Try to find Python on the system
       let pythonCmd = null;
       
-      // First, try to use virtual environment Python directly
-      const venvPythonPaths = [
+      // Try different Python paths, including system Python which is more likely on a local machine
+      const possiblePythonPaths = [
         '/opt/venv/bin/python',
-        '/opt/venv/bin/python3'
+        '/opt/venv/bin/python3',
+        'python3',  // Use system Python on Mac
+        'python'    // Fallback to any Python in PATH
       ];
       
-      for (const venvPath of venvPythonPaths) {
+      for (const venvPath of possiblePythonPaths) {
         if (fs.existsSync(venvPath)) {
           try {
             // Test if this python can import playwright
@@ -600,6 +604,7 @@ app.post('/api/generate-topic-pdf', async (req, res) => {
     try {
       browser = await chromium.launch({
         headless: true,
+        // Reduce arguments to make it more compatible with local environments
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
