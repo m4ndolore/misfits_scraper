@@ -35,6 +35,7 @@ interface AdvancedFilters {
   sbirSttr: string[]
   modernizationPriority: string[]
   technologyAreas: string[]
+  components: string[] // Array of component codes like "ARMY", "NAVY", etc.
 }
 
 export default function EnhancedSBIRTool() {
@@ -53,7 +54,8 @@ export default function EnhancedSBIRTool() {
     topicStatuses: ['591', '592'], // Default to Open and Pre-release
     sbirSttr: ['SBIR', 'STTR'],
     modernizationPriority: [],
-    technologyAreas: []
+    technologyAreas: [],
+    components: [] // Empty array for components filter
   })
   const [selectedTopicForAnalytics, setSelectedTopicForAnalytics] = useState<SBIROpportunity | null>(null)
   const [downloadingTopics, setDownloadingTopics] = useState<Set<string>>(new Set())
@@ -66,10 +68,14 @@ export default function EnhancedSBIRTool() {
 
   const filters = [
     { key: "all", label: "All Agencies", color: "#4a9eff" },
-    { key: "army", label: "Army", color: "#ff6b6b" },
-    { key: "navy", label: "Navy", color: "#4ecdc4" },
-    { key: "air force", label: "Air Force", color: "#45b7d1" },
-    { key: "defense", label: "Defense", color: "#f39c12" },
+    { key: "ARMY", label: "Army", color: "#ff6b6b", components: ["ARMY"] },
+    { key: "NAVY", label: "Navy", color: "#4ecdc4", components: ["NAVY"] },
+    { key: "USAF", label: "Air Force", color: "#45b7d1", components: ["USAF"] },
+    { key: "SOCOM", label: "SOCOM", color: "#f39c12", components: ["SOCOM"] },
+    { key: "DARPA", label: "DARPA", color: "#9b59b6", components: ["DARPA"] },
+    { key: "DLA", label: "DLA", color: "#e74c3c", components: ["DLA"] },
+    { key: "DHA", label: "DHA", color: "#2ecc71", components: ["DHA"] },
+    { key: "MDA", label: "MDA", color: "#1abc9c", components: ["MDA"] },
     { key: "ai", label: "AI/ML", color: "#9b59b6" },
     { key: "cyber", label: "Cybersec", color: "#e74c3c" },
     { key: "energy", label: "Energy", color: "#2ecc71" }
@@ -95,7 +101,7 @@ export default function EnhancedSBIRTool() {
   // Helper function to convert filters to match the expected API format
   const toSearchParam = (filters: {
     searchText?: string;
-    component?: string[];
+    components?: string[];
     modernizationPriority?: string[];
     technologyAreas?: string[];
     topicStatuses?: string[];
@@ -104,16 +110,15 @@ export default function EnhancedSBIRTool() {
     // Create the correctly formatted search parameter object
     const formattedParams: any = {
       searchText: filters.searchText || null,
-      components: null,
+      component: filters.components && filters.components.length > 0 ? filters.components : null,
       programYear: null,
-      solicitationCycleNames: ["openTopics"],
+      //solicitationCycleNames: ["openTopics"],
       releaseNumbers: [],
       topicReleaseStatus: filters.topicStatuses ? 
         filters.topicStatuses.map(status => parseInt(status, 10)) : 
         [591, 592], // Default to Open and Pre-release
       modernizationPriorities: filters.modernizationPriority || [],
       sortBy: "finalTopicCode,asc",
-      component: filters.component || [],
       technologyAreaIds: filters.technologyAreas || [],
       program: filters.sbirSttr && filters.sbirSttr.length === 1 ? filters.sbirSttr[0] : null
     };
@@ -137,8 +142,10 @@ export default function EnhancedSBIRTool() {
         filterParams.searchText = null
       }
       
-      // Add component filter based on activeFilter
-      if (activeFilter !== "all") {
+      // Add component filter - prioritize advanced filter components over activeFilter
+      if (advancedFilters.components.length > 0) {
+        filterParams.components = [...advancedFilters.components]
+      } else if (activeFilter !== "all") {
         // Map UI filter keys to API component values
         const componentMap: {[key: string]: string} = {
           "army": "ARMY",
@@ -148,7 +155,7 @@ export default function EnhancedSBIRTool() {
         };
         
         if (componentMap[activeFilter]) {
-          filterParams.component = [componentMap[activeFilter]]
+          filterParams.components = [componentMap[activeFilter]]
         }
       }
       
@@ -236,17 +243,18 @@ export default function EnhancedSBIRTool() {
       filtered = data.filter(opp => {
         const title = (opp.topicTitle || '').toLowerCase()
         const desc = (opp.description || opp.objective || '').toLowerCase()
-        const component = (opp.component || '').toLowerCase()
+        const component = (opp.component || '').toUpperCase()
         
+        // Get the selected filter
+        const selectedFilter = filters.find(f => f.key === filter)
+        
+        // If it's a component category filter
+        if (selectedFilter?.components) {
+          return selectedFilter.components.includes(component)
+        }
+        
+        // Handle modernization topic filters
         switch (filter) {
-          case 'army':
-            return component.includes('army')
-          case 'navy':
-            return component.includes('navy') || component.includes('marine')
-          case 'air force':
-            return component.includes('air force') || component.includes('space force')
-          case 'defense':
-            return component.includes('defense') || component.includes('darpa')
           case 'ai':
             return title.includes('ai') || title.includes('artificial intelligence') || 
                    desc.includes('ai') || desc.includes('machine learning')
@@ -562,6 +570,16 @@ export default function EnhancedSBIRTool() {
 
   const handleFilterChange = (filterKey: string) => {
     setActiveFilter(filterKey)
+    
+    // If it's a component category filter, update the components in advancedFilters
+    const selectedFilter = filters.find(f => f.key === filterKey)
+    if (selectedFilter?.components) {
+      setAdvancedFilters(prev => ({
+        ...prev,
+        components: selectedFilter.components
+      }))
+    }
+    
     applyClientSideFilters(opportunities, filterKey)
   }
 
@@ -670,6 +688,25 @@ export default function EnhancedSBIRTool() {
     } finally {
       setLoadingQuestions(false)
     }
+  }
+
+  // Helper function to get component labels
+  const getComponentLabel = (code: string): string => {
+    const componentMap: {[key: string]: string} = {
+      'ARMY': 'Army',
+      'DLA': 'Defense Logistics Agency',
+      'NAVY': 'Navy',
+      'CBD': 'Chemical Biological Defense',
+      'DMEA': 'Defense Microelectronics Activity',
+      'OSD': 'Office of Secretary of Defense',
+      'DARPA': 'DARPA',
+      'DTRA': 'Defense Threat Reduction Agency',
+      'SOCOM': 'Special Operations Command',
+      'USAF': 'Air Force',
+      'MDA': 'Missile Defense Agency',
+      'DHA': 'Defense Health Agency'
+    }
+    return componentMap[code] || code
   }
 
   return (
@@ -911,6 +948,71 @@ export default function EnhancedSBIRTool() {
                 </div>
               </div>
 
+              {/* Component Filter */}
+              <div>
+                <div style={{
+                  color: '#c0c0c0',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  marginBottom: '12px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '1px'
+                }}>
+                  🏛️ Components
+                </div>
+                <div style={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: '8px',
+                  maxHeight: '200px',
+                  overflowY: 'auto',
+                  paddingRight: '8px'
+                }}>
+                  {[
+                    { value: 'ARMY', label: 'Army' },
+                    { value: 'DLA', label: 'Defense Logistics Agency' },
+                    { value: 'NAVY', label: 'Navy' },
+                    { value: 'CBD', label: 'Chemical Biological Defense' },
+                    { value: 'DMEA', label: 'Defense Microelectronics Activity' },
+                    { value: 'OSD', label: 'Office of Secretary of Defense' },
+                    { value: 'DARPA', label: 'DARPA' },
+                    { value: 'DTRA', label: 'Defense Threat Reduction Agency' },
+                    { value: 'SOCOM', label: 'Special Operations Command' },
+                    { value: 'USAF', label: 'Air Force' },
+                    { value: 'MDA', label: 'Missile Defense Agency' },
+                    { value: 'DHA', label: 'Defense Health Agency' }
+                  ].map(component => (
+                    <label key={component.value} style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      color: '#a0a0a0',
+                      cursor: 'pointer'
+                    }}>
+                      <input
+                        type="checkbox"
+                        checked={advancedFilters.components.includes(component.value)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setAdvancedFilters(prev => ({
+                              ...prev,
+                              components: [...prev.components, component.value]
+                            }))
+                          } else {
+                            setAdvancedFilters(prev => ({
+                              ...prev,
+                              components: prev.components.filter(c => c !== component.value)
+                            }))
+                          }
+                        }}
+                        style={{ marginRight: '8px' }}
+                      />
+                      {component.label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
               {/* SBIR/STTR Filter */}
               <div>
                 <div style={{
@@ -993,7 +1095,8 @@ export default function EnhancedSBIRTool() {
                       topicStatuses: ['591', '592'], // Reset to default
                       sbirSttr: ['SBIR', 'STTR'],
                       modernizationPriority: [],
-                      technologyAreas: []
+                      technologyAreas: [],
+                      components: [] // Reset components to empty array
                     })
                     setPage(0)
                     // Don't fetch immediately - let user click Apply
@@ -1086,10 +1189,55 @@ export default function EnhancedSBIRTool() {
                 transition: 'all 0.3s ease',
                 boxShadow: activeFilter === filter.key 
                   ? `0 0 20px ${filter.color}40` 
-                  : 'none'
+                  : 'none',
+                position: 'relative'
               }}
             >
               {filter.label}
+              {filter.components && activeFilter === filter.key && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  background: 'rgba(26, 26, 26, 0.95)',
+                  border: '1px solid #333333',
+                  borderRadius: '8px',
+                  padding: '12px',
+                  marginTop: '8px',
+                  minWidth: '200px',
+                  zIndex: 100,
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)'
+                }}>
+                  <div style={{
+                    color: '#c0c0c0',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    marginBottom: '8px',
+                    textTransform: 'uppercase',
+                    letterSpacing: '1px'
+                  }}>
+                    Selected Components:
+                  </div>
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '4px'
+                  }}>
+                    {filter.components.map(component => (
+                      <div key={component} style={{
+                        color: '#a0a0a0',
+                        fontSize: '12px',
+                        padding: '4px 8px',
+                        background: 'rgba(74, 158, 255, 0.1)',
+                        borderRadius: '4px'
+                      }}>
+                        {getComponentLabel(component)}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </button>
           ))}
         </div>
