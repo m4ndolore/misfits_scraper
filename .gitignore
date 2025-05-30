@@ -16,6 +16,7 @@ __pycache__/
 *$py.class
 venv/
 .venv/
+misfits-env/
 
 # Downloads and temp files (IMPORTANT: Keep PDFs out of git)
 downloads/
