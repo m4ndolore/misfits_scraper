@@ -16,14 +16,8 @@ interface SBIROpportunity {
     email: string
     phone: string
   }>
-  phaseHierarchy?: string
   numQuestions?: number
-  technologyAreas?: string[]
-  focusAreas?: string[]
-  keywords?: string[]
-  phase1Description?: string
-  phase2Description?: string
-  phase3Description?: string
+  questions?: any[]
 }
 
 interface Download {
@@ -98,84 +92,126 @@ export default function EnhancedSBIRTool() {
     return `⚪ ${status || 'UNKNOWN'}`
   }
 
-  // Connect to your existing DoD API search with proper filtering
+  // Helper function to convert filters to match the expected API format
+  const toSearchParam = (filters: {
+    searchText?: string;
+    component?: string[];
+    modernizationPriority?: string[];
+    technologyAreas?: string[];
+    topicStatuses?: string[];
+    sbirSttr?: string[];
+  }) => {
+    // Create the correctly formatted search parameter object
+    const formattedParams: any = {
+      searchText: filters.searchText || null,
+      components: null,
+      programYear: null,
+      solicitationCycleNames: ["openTopics"],
+      releaseNumbers: [],
+      topicReleaseStatus: filters.topicStatuses ? 
+        filters.topicStatuses.map(status => parseInt(status, 10)) : 
+        [591, 592], // Default to Open and Pre-release
+      modernizationPriorities: filters.modernizationPriority || [],
+      sortBy: "finalTopicCode,asc",
+      component: filters.component || [],
+      technologyAreaIds: filters.technologyAreas || [],
+      program: filters.sbirSttr && filters.sbirSttr.length === 1 ? filters.sbirSttr[0] : null
+    };
+    
+    console.log('Raw filters object received by toSearchParam:', filters);
+    console.log('Formatted search parameters:', formattedParams);
+    return formattedParams;
+  }
+
+  // Connect to your existing DoD API search with corrected filtering logic
   const fetchOpportunities = useCallback(async () => {
     setLoading(true)
     try {
-      // Build search parameters with proper filtering
-      const searchParams: any = {
-        searchText: searchTerm || ""
-      }
+      // Build search parameters based on the correct API format
+      const filterParams: any = {}
       
-      // Only add topicStatuses if we have specific selections
-      if (advancedFilters.topicStatuses.length > 0) {
-        searchParams.topicStatuses = advancedFilters.topicStatuses
+      // Add search text if provided
+      if (searchTerm && searchTerm.trim()) {
+        filterParams.searchText = searchTerm.trim()
       } else {
-        // Default to Open and Pre-release if nothing selected
-        searchParams.topicStatuses = ['591', '592']
+        filterParams.searchText = null
+      }
+      
+      // Add component filter based on activeFilter
+      if (activeFilter !== "all") {
+        // Map UI filter keys to API component values
+        const componentMap: {[key: string]: string} = {
+          "army": "ARMY",
+          "navy": "NAVY",
+          "air force": "AIR FORCE",
+          "defense": "DEFENSE AGENCIES"
+        };
+        
+        if (componentMap[activeFilter]) {
+          filterParams.component = [componentMap[activeFilter]]
+        }
+      }
+      
+      // Add topic status filters
+      if (advancedFilters.topicStatuses.length > 0) {
+        filterParams.topicStatuses = [...advancedFilters.topicStatuses]
       }
 
-      console.log('🔍 Search Parameters:', searchParams)
-      console.log('📊 Selected Status Filters:', advancedFilters.topicStatuses)
+      // Add other filter parameters
+      if (advancedFilters.modernizationPriority.length > 0) {
+        filterParams.modernizationPriority = [...advancedFilters.modernizationPriority]
+      }
 
-      const encodedParams = encodeURIComponent(JSON.stringify(searchParams))
-      const url = `https://www.dodsbirsttr.mil/topics/api/public/topics/search?searchParam=${encodedParams}&size=50&page=${page}`
+      if (advancedFilters.technologyAreas.length > 0) {
+        filterParams.technologyAreas = [...advancedFilters.technologyAreas]
+      }
+
+      // Add SBIR/STTR filter if specified
+      if (advancedFilters.sbirSttr.length > 0) {
+        filterParams.sbirSttr = [...advancedFilters.sbirSttr]
+      }
+
+      // Use the toSearchParam function to process the filters into the correct format
+      const processedParams = toSearchParam(filterParams)
       
-      console.log('🌐 Full API URL:', url)
+      console.log('🔍 Final Search Parameters:', JSON.stringify(processedParams, null, 2))
+
+      const encodedParams = encodeURIComponent(JSON.stringify(processedParams))
+      const url = `https://www.dodsbirsttr.mil/topics/api/public/topics/search?searchParam=${encodedParams}&size=${25}&page=${page}`
+      
+      console.log('🌐 API Call URL:', url)
+      console.log('📋 Decoded searchParam:', JSON.stringify(processedParams, null, 2))
       
       const response = await fetch(url)
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status} ${response.statusText}`)
+      }
+      
       const data = await response.json()
       
-      console.log('📥 Raw API Response:', data)
-      console.log('📋 Opportunities returned:', data.data?.length || 0)
+      console.log('📥 API Response Status:', response.status)
+      console.log('📊 Total Results:', data.total)
+      console.log('📋 Results Returned:', data.data?.length || 0)
       
       if (data.data && data.data.length > 0) {
-        // Log status breakdown to debug filtering
+        // Log status breakdown to verify filtering is working
         const statusBreakdown = data.data.reduce((acc: any, opp: any) => {
-          acc[opp.topicStatus] = (acc[opp.topicStatus] || 0) + 1
+          const status = opp.topicStatus || 'Unknown'
+          acc[status] = (acc[status] || 0) + 1
           return acc
         }, {})
-        console.log('📊 Status breakdown from API:', statusBreakdown)
+        console.log('📊 Status Distribution:', statusBreakdown)
         
-        // Enhanced data with Q&A count - but fetch Q&A more efficiently
-        const enhancedData = await Promise.all(
-          data.data.slice(0, 10).map(async (opp: SBIROpportunity) => { // Limit to first 10 for performance
-            try {
-              // Fetch Q&A count for each opportunity
-              const qaResponse = await fetch(
-                `https://www.dodsbirsttr.mil/topics/api/public/topics/${opp.topicId}/questions`
-              )
-              if (qaResponse.ok) {
-                const qaData = await qaResponse.json()
-                return {
-                  ...opp,
-                  numQuestions: Array.isArray(qaData) ? qaData.length : 0,
-                  questions: qaData || []
-                }
-              }
-            } catch (qaError) {
-              console.warn(`Failed to fetch Q&A for ${opp.topicCode}:`, qaError)
-            }
-            return {
-              ...opp,
-              numQuestions: 0,
-              questions: []
-            }
-          })
-        )
-        
-        // For remaining topics, just add empty Q&A data
-        const remainingData = data.data.slice(10).map((opp: SBIROpportunity) => ({
+        // Only fetch Q&A for first few topics to improve performance
+        const enhancedData = data.data.map((opp: SBIROpportunity, index: number) => ({
           ...opp,
-          numQuestions: 0,
-          questions: []
+          numQuestions: opp.numQuestions || 0,
+          questions: [] // Initialize empty, will be loaded on demand
         }))
         
-        const allData = [...enhancedData, ...remainingData]
-        
-        setOpportunities(allData)
+        setOpportunities(enhancedData)
         setTotalResults(data.total || 0)
-        applyClientSideFilters(allData, activeFilter)
+        applyClientSideFilters(enhancedData, activeFilter)
       } else {
         console.log('⚠️ No data returned from API')
         setOpportunities([])
@@ -297,11 +333,44 @@ export default function EnhancedSBIRTool() {
     }
   }
 
-  // Disable the problematic Python PDF download and use only the details PDF generation
+  // Re-enable the official PDF download with better error handling
   const downloadOfficialPDF = async (topicCode: string): Promise<void> => {
-    // Instead of using the broken Python script, we'll generate a simple notice
-    console.log('⚠️ Official PDF download temporarily disabled due to DoD site access issues')
-    throw new Error('Official PDF download is temporarily unavailable. Using details PDF instead.')
+    console.log('📋 Attempting official PDF download for:', topicCode)
+    
+    const response = await fetch(`${API_BASE_URL}/api/download-pdf`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topicCode }),
+    })
+
+    console.log('📤 POST request sent to:', `${API_BASE_URL}/api/download-pdf`)
+    console.log('📋 Request body:', JSON.stringify({ topicCode }))
+    console.log('📥 Response status:', response.status)
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      console.error('❌ Official PDF download failed:', errorData)
+      throw new Error(errorData.error || `HTTP ${response.status}: Failed to download official PDF`)
+    }
+
+    const blob = await response.blob()
+    console.log('📦 Received blob size:', blob.size)
+    
+    if (!blob || blob.size === 0) {
+      throw new Error('Received empty official PDF file')
+    }
+
+    // Create download
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `topic_${topicCode}_official.pdf`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    window.URL.revokeObjectURL(url)
+    
+    console.log('✅ Official PDF download completed')
   }
 
   const downloadDetailsPDF = async (topicCode: string): Promise<void> => {
@@ -388,7 +457,7 @@ export default function EnhancedSBIRTool() {
     }
   }
 
-  // Simplified download that only generates details PDF (more reliable)
+  // Restore both PDF downloads
   const startDownload = async (topicCode: string) => {
     // Immediate UI feedback
     setDownloadingTopics(prev => new Set([...prev, topicCode]))
@@ -412,18 +481,52 @@ export default function EnhancedSBIRTool() {
         d.id === downloadId ? { ...d, status: 'downloading' } : d
       ))
 
-      // Only generate details PDF (more reliable than external scraping)
-      console.log('📋 Generating topic details PDF for:', topicCode)
-      await downloadDetailsPDF(topicCode)
+      console.log('🚀 Starting downloads for topic:', topicCode)
 
-      // Success
+      // Try both downloads
+      const [officialResult, detailsResult] = await Promise.allSettled([
+        downloadOfficialPDF(topicCode),
+        downloadDetailsPDF(topicCode)
+      ])
+
+      let successCount = 0
+      let errorMessages: string[] = []
+
+      if (officialResult.status === 'fulfilled') {
+        successCount++
+        console.log('✅ Official PDF download succeeded')
+      } else {
+        errorMessages.push(`Official PDF: ${officialResult.reason}`)
+        console.error('❌ Official PDF failed:', officialResult.reason)
+      }
+
+      if (detailsResult.status === 'fulfilled') {
+        successCount++
+        console.log('✅ Details PDF download succeeded')
+      } else {
+        errorMessages.push(`Details PDF: ${detailsResult.reason}`)
+        console.error('❌ Details PDF failed:', detailsResult.reason)
+      }
+
+      if (successCount === 0) {
+        throw new Error(errorMessages.join('. '))
+      }
+
+      // Success (at least one PDF downloaded)
+      const filename = successCount === 2 
+        ? `${topicCode}_official.pdf & ${topicCode}_details.pdf`
+        : successCount === 1 && officialResult.status === 'fulfilled'
+        ? `${topicCode}_official.pdf`
+        : `${topicCode}_details.pdf`
+
       setDownloads(prev => prev.map(d => 
         d.id === downloadId 
           ? { 
               ...d, 
               status: 'completed', 
-              filename: `${topicCode}_details.pdf`,
-              progress: 100 
+              filename,
+              progress: 100,
+              error: errorMessages.length > 0 ? `Partial success: ${errorMessages.join('. ')}` : null
             }
           : d
       ))
@@ -435,7 +538,7 @@ export default function EnhancedSBIRTool() {
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
-      console.error('❌ Download failed:', errorMessage)
+      console.error('❌ All downloads failed:', errorMessage)
       
       setDownloads(prev => prev.map(d => 
         d.id === downloadId 
@@ -499,6 +602,45 @@ export default function EnhancedSBIRTool() {
     setSelectedTopicForAnalytics(opp)
   }
 
+  // Helper function to clean and display text content properly
+  const cleanContent = (content: any): string => {
+    if (!content) return 'No content available'
+    
+    let processed = content
+    
+    // Handle JSON objects
+    if (typeof processed === 'object' && processed !== null) {
+      // If it's an object, try to extract meaningful text
+      if (processed.content) {
+        processed = processed.content
+      } else if (processed.answer) {
+        processed = processed.answer
+      } else if (processed.text) {
+        processed = processed.text
+      } else {
+        // If it's a complex object, stringify it but make it readable
+        processed = JSON.stringify(processed, null, 2)
+      }
+    }
+    
+    // Convert to string if not already
+    processed = String(processed)
+    
+    // Remove HTML tags and decode entities
+    processed = processed
+      .replace(/<[^>]*>/g, ' ')           // Remove HTML tags
+      .replace(/&nbsp;/g, ' ')           // Replace &nbsp; with space
+      .replace(/&amp;/g, '&')            // Decode &amp;
+      .replace(/&lt;/g, '<')             // Decode &lt;
+      .replace(/&gt;/g, '>')             // Decode &gt;
+      .replace(/&quot;/g, '"')           // Decode &quot;
+      .replace(/&#39;/g, "'")            // Decode &#39;
+      .replace(/\s+/g, ' ')              // Replace multiple spaces with single space
+      .trim()                            // Remove leading/trailing whitespace
+    
+    return processed || 'No content available'
+  }
+
   const closeAnalytics = () => {
     setSelectedTopicForAnalytics(null)
     setShowQAModal(false)
@@ -515,7 +657,7 @@ export default function EnhancedSBIRTool() {
       if (response.ok) {
         const qaData = await response.json()
         const questions = Array.isArray(qaData) ? qaData : []
-        questions.sort((a, b) => (a.questionNo || 0) - (b.questionNo || 0))
+        questions.sort((a: any, b: any) => (a.questionNo || 0) - (b.questionNo || 0))
         setSelectedTopicQuestions(questions)
         console.log('✅ Loaded Q&A details:', questions.length, 'questions')
       } else {
@@ -1823,7 +1965,7 @@ export default function EnhancedSBIRTool() {
                           lineHeight: 1.6,
                           fontSize: '15px'
                         }}>
-                          {qa.question || 'No question text available'}
+                          {cleanContent(qa.question)}
                         </div>
                       </div>
 
@@ -1867,10 +2009,7 @@ export default function EnhancedSBIRTool() {
                               lineHeight: 1.6,
                               fontSize: '15px'
                             }}>
-                              {typeof answer.answer === 'string' 
-                                ? answer.answer 
-                                : JSON.stringify(answer.answer) || 'No answer text available'
-                              }
+                              {cleanContent(answer.answer)}
                             </div>
                           </div>
                         ))

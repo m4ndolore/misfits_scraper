@@ -232,7 +232,133 @@ app.use((req, res, next) => {
   
   next();
 });
-
+// Add to your server.js for enhanced filtering
+app.get('/api/sbir/summary', async (req, res) => {
+  try {
+    // Get summary stats for the dashboard
+    const searchParams = { topicStatuses: ['591', '592'] }
+    const encodedParams = encodeURIComponent(JSON.stringify(searchParams))
+    const url = `https://www.dodsbirsttr.mil/topics/api/public/topics/search?searchParam=${encodedParams}&size=1000&page=0`
+    
+    const response = await axios.get(url)
+    const opportunities = response.data.data || []
+    
+    // Generate statistics
+    const stats = {
+      total: opportunities.length,
+      byComponent: {},
+      byStatus: {},
+      byPriority: { critical: 0, high: 0, medium: 0 },
+      recentlyUpdated: opportunities.filter(opp => {
+        const updated = new Date(opp.lastModified || opp.createdDate)
+        const daysAgo = (Date.now() - updated.getTime()) / (1000 * 60 * 60 * 24)
+        return daysAgo <= 7
+      }).length
+    }
+    
+    opportunities.forEach(opp => {
+      // Component stats
+      const component = opp.component || 'Unknown'
+      stats.byComponent[component] = (stats.byComponent[component] || 0) + 1
+      
+      // Status stats  
+      const status = opp.topicStatus || 'Unknown'
+      stats.byStatus[status] = (stats.byStatus[status] || 0) + 1
+      
+      // Priority stats
+      const priority = determinePriority(opp.topicStatus)
+      stats.byPriority[priority]++
+    })
+    
+    res.json({ success: true, data: stats })
+    
+  } catch (error) {
+    console.error('Summary stats error:', error)
+    res.status(500).json({ success: false, error: 'Failed to get summary stats' })
+  }
+ })
+ 
+ // Enhanced bulk download with better error handling
+ app.post('/api/sbir/bulk-download-enhanced', async (req, res) => {
+  try {
+    const { topicCodes, includeDetails = true } = req.body
+    
+    if (!Array.isArray(topicCodes) || topicCodes.length === 0) {
+      return res.status(400).json({ error: 'Topic codes array required' })
+    }
+    
+    const results = []
+    const downloadPromises = topicCodes.map(async (topicCode) => {
+      try {
+        const result = { topicCode, status: 'pending', files: [] }
+        
+        // Download official PDF
+        try {
+          await downloadTopicPDF(topicCode) // Your existing function
+          result.files.push(`${topicCode}_official.pdf`)
+        } catch (error) {
+          result.officialError = error.message
+        }
+        
+        // Download details PDF if requested
+        if (includeDetails) {
+          try {
+            await generateDetailsPDF(topicCode) // Your existing function
+            result.files.push(`${topicCode}_details.pdf`)
+          } catch (error) {
+            result.detailsError = error.message
+          }
+        }
+        
+        result.status = result.files.length > 0 ? 'success' : 'error'
+        return result
+        
+      } catch (error) {
+        return {
+          topicCode,
+          status: 'error',
+          error: error.message,
+          files: []
+        }
+      }
+    })
+    
+    // Process downloads with concurrency limit
+    const batchSize = 3 // Process 3 at a time to avoid overwhelming the system
+    const batches = []
+    for (let i = 0; i < downloadPromises.length; i += batchSize) {
+      batches.push(downloadPromises.slice(i, i + batchSize))
+    }
+    
+    for (const batch of batches) {
+      const batchResults = await Promise.allSettled(batch)
+      results.push(...batchResults.map(r => r.status === 'fulfilled' ? r.value : r.reason))
+    }
+    
+    const successful = results.filter(r => r.status === 'success').length
+    const failed = results.filter(r => r.status === 'error').length
+    
+    res.json({
+      success: true,
+      results,
+      summary: {
+        total: topicCodes.length,
+        successful,
+        failed,
+        successRate: Math.round((successful / topicCodes.length) * 100)
+      }
+    })
+    
+  } catch (error) {
+    console.error('Bulk download error:', error)
+    res.status(500).json({
+      success: false,
+      error: 'Bulk download failed',
+      details: error.message
+    })
+  }
+ })
+ 
 // Health check endpoints with proper readiness indication
 app.get('/health', (req, res) => {
   console.log('Health check requested from:', req.get('host') || 'unknown');
