@@ -1262,6 +1262,80 @@ export default function EnhancedSBIRTool() {
             </div>
           )}
 
+{/* Download Queue */}
+{downloads.length > 0 && (
+            <div style={{
+              marginTop: '32px',
+              padding: '24px',
+              background: 'rgba(26, 26, 26, 0.8)',
+              borderRadius: '16px',
+              border: '1px solid #333333'
+            }}>
+              <div style={{
+                color: '#c0c0c0',
+                fontSize: '16px',
+                fontWeight: 600,
+                marginBottom: '16px',
+                textTransform: 'uppercase',
+                letterSpacing: '1px'
+              }}>
+                🔄 Active Downloads ({downloads.length})
+              </div>
+              {downloads.map((download) => (
+                <div
+                  key={download.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '12px',
+                    marginBottom: '8px',
+                    background: 'rgba(15, 15, 15, 0.5)',
+                    borderRadius: '8px',
+                    border: '1px solid #444444'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ fontSize: '20px' }}>
+                      {download.status === 'pending' && '⏳'}
+                      {download.status === 'downloading' && '⬇️'}
+                      {download.status === 'completed' && '✅'}
+                      {download.status === 'error' && '❌'}
+                    </div>
+                    <div>
+                      <div style={{ color: '#e8e8e8', fontWeight: 600 }}>
+                        Topic {download.topicCode}
+                      </div>
+                      <div style={{ color: '#a0a0a0', fontSize: '12px' }}>
+                        {download.status === 'pending' && 'Preparing downloads...'}
+                        {download.status === 'downloading' && 'Downloading official PDF + details PDF...'}
+                        {download.status === 'completed' && `✅ Both files downloaded: ${download.filename}`}
+                        {download.status === 'error' && `❌ Error: ${download.error}`}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {download.status === 'downloading' && (
+                    <div style={{
+                      width: '120px',
+                      height: '6px',
+                      background: '#333333',
+                      borderRadius: '3px',
+                      overflow: 'hidden'
+                    }}>
+                      <div style={{
+                        width: '60%',
+                        height: '100%',
+                        background: 'linear-gradient(90deg, #4a9eff, #357abd)',
+                        animation: 'pulse 1.5s ease-in-out infinite alternate'
+                      }} />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          
           {/* Results */}
           {!loading && (
             <div style={{ 
@@ -1558,79 +1632,7 @@ export default function EnhancedSBIRTool() {
             </div>
           )}
 
-          {/* Download Queue */}
-          {downloads.length > 0 && (
-            <div style={{
-              marginTop: '32px',
-              padding: '24px',
-              background: 'rgba(26, 26, 26, 0.8)',
-              borderRadius: '16px',
-              border: '1px solid #333333'
-            }}>
-              <div style={{
-                color: '#c0c0c0',
-                fontSize: '16px',
-                fontWeight: 600,
-                marginBottom: '16px',
-                textTransform: 'uppercase',
-                letterSpacing: '1px'
-              }}>
-                🔄 Active Downloads ({downloads.length})
-              </div>
-              {downloads.map((download) => (
-                <div
-                  key={download.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '12px',
-                    marginBottom: '8px',
-                    background: 'rgba(15, 15, 15, 0.5)',
-                    borderRadius: '8px',
-                    border: '1px solid #444444'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ fontSize: '20px' }}>
-                      {download.status === 'pending' && '⏳'}
-                      {download.status === 'downloading' && '⬇️'}
-                      {download.status === 'completed' && '✅'}
-                      {download.status === 'error' && '❌'}
-                    </div>
-                    <div>
-                      <div style={{ color: '#e8e8e8', fontWeight: 600 }}>
-                        Topic {download.topicCode}
-                      </div>
-                      <div style={{ color: '#a0a0a0', fontSize: '12px' }}>
-                        {download.status === 'pending' && 'Preparing downloads...'}
-                        {download.status === 'downloading' && 'Downloading official PDF + details PDF...'}
-                        {download.status === 'completed' && `✅ Both files downloaded: ${download.filename}`}
-                        {download.status === 'error' && `❌ Error: ${download.error}`}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {download.status === 'downloading' && (
-                    <div style={{
-                      width: '120px',
-                      height: '6px',
-                      background: '#333333',
-                      borderRadius: '3px',
-                      overflow: 'hidden'
-                    }}>
-                      <div style={{
-                        width: '60%',
-                        height: '100%',
-                        background: 'linear-gradient(90deg, #4a9eff, #357abd)',
-                        animation: 'pulse 1.5s ease-in-out infinite alternate'
-                      }} />
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
+          
 
           {/* Summary Stats */}
           <div style={{
