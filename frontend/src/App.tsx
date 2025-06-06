@@ -210,9 +210,9 @@ export default function EnhancedSBIRTool() {
         console.log('📊 Status Distribution:', statusBreakdown)
         
         // Only fetch Q&A for first few topics to improve performance
-        const enhancedData = data.data.map((opp: SBIROpportunity, index: number) => ({
+        const enhancedData = data.data.map((opp: any, index: number) => ({
           ...opp,
-          numQuestions: opp.numQuestions || 0,
+          numQuestions: opp.noOfPublishedQuestions || 0,
           questions: [] // Initialize empty, will be loaded on demand
         }))
         
