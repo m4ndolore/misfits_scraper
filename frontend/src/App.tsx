@@ -18,6 +18,9 @@ interface SBIROpportunity {
   }>
   numQuestions?: number
   questions?: any[]
+  topicEndDate?: number | string
+  topicStartDate?: number | string
+  noOfPublishedQuestions?: number
 }
 
 interface Download {
@@ -348,7 +351,60 @@ export default function EnhancedSBIRTool() {
   }
 
   const extractDeadline = (opp: SBIROpportunity) => {
-    // You might want to enhance this with actual deadline parsing
+    // Check if we have end date (deadline)
+    if (opp.topicEndDate) {
+      const endDate = new Date(Number(opp.topicEndDate))
+      const now = new Date()
+      
+      // Format the date nicely
+      const formattedDate = endDate.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      })
+      
+      // Calculate days remaining
+      const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+      
+      // If the topic hasn't started yet, show the start date too
+      if (opp.topicStartDate) {
+        const startDate = new Date(Number(opp.topicStartDate))
+        if (startDate > now) {
+          const formattedStartDate = startDate.toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+          })
+          return `Opens: ${formattedStartDate}, Closes: ${formattedDate}`
+        }
+      }
+      
+      // Add days remaining if it's in the future
+      if (daysRemaining > 0) {
+        return `${formattedDate} (${daysRemaining} days left)`
+      } else if (daysRemaining === 0) {
+        return `${formattedDate} (Due today!)`
+      } else {
+        return `Closed on ${formattedDate}`
+      }
+    } else if (opp.topicStartDate) {
+      // If no end date but we have start date
+      const startDate = new Date(Number(opp.topicStartDate))
+      const formattedDate = startDate.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      })
+      
+      const now = new Date()
+      if (startDate > now) {
+        return `Opens: ${formattedDate}`
+      } else {
+        return `Opened: ${formattedDate}`
+      }
+    }
+    
+    // Fallback if no dates are available
     return "Check Solicitation"
   }
 
