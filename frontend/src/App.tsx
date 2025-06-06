@@ -697,6 +697,16 @@ export default function EnhancedSBIRTool() {
     
     let processed = content
     
+    // Handle JSON objects or strings that might be JSON
+    if (typeof processed === 'string' && (processed.startsWith('{') || processed.startsWith('['))) {
+      try {
+        const parsedJson = JSON.parse(processed)
+        processed = parsedJson
+      } catch (e) {
+        // Not valid JSON, keep as is
+      }
+    }
+    
     // Handle JSON objects
     if (typeof processed === 'object' && processed !== null) {
       // If it's an object, try to extract meaningful text
@@ -706,9 +716,32 @@ export default function EnhancedSBIRTool() {
         processed = processed.answer
       } else if (processed.text) {
         processed = processed.text
+      } else if (Array.isArray(processed) && processed.length) {
+        // It might be an array
+        processed = processed.join(' ')
       } else {
-        // If it's a complex object, stringify it but make it readable
-        processed = JSON.stringify(processed, null, 2)
+        // Check for common API response patterns
+        const possibleTextFields = ['body', 'message', 'description', 'value', 'data']
+        for (const field of possibleTextFields) {
+          if (processed[field]) {
+            processed = processed[field]
+            break
+          }
+        }
+        
+        // If still an object, extract values instead of stringifying the whole object
+        if (typeof processed === 'object' && processed !== null) {
+          // Just extract all values and join them
+          const values = Object.values(processed)
+            .filter(val => typeof val === 'string' || typeof val === 'number')
+          
+          if (values.length > 0) {
+            processed = values.join(' ')
+          } else {
+            // If we couldn't extract any values, use the full string but without formatting
+            processed = JSON.stringify(processed)
+          }
+        }
       }
     }
     
