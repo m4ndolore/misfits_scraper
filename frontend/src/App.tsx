@@ -1647,7 +1647,7 @@ export default function EnhancedSBIRTool() {
               fontSize: '14px',
               fontWeight: 600
             }}>
-              📊 Showing {filteredOpportunities.length} of {totalResults} opportunities
+              📊 Showing {filteredOpportunities.length} of {totalResults} opportunities (Page {page + 1} of {Math.ceil(totalResults / 25)})
             </div>
             <div style={{
               color: '#a0a0a0',
@@ -2226,6 +2226,109 @@ export default function EnhancedSBIRTool() {
           `}
         </style>
       </div>
+      
+      {/* Pagination Controls */}
+      {totalResults > 0 && (
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: '10px',
+          margin: '20px 0',
+          flexWrap: 'wrap'
+        }}>
+          <button
+            onClick={() => setPage(0)}
+            disabled={page === 0}
+            style={{
+              padding: '8px 12px',
+              border: '1px solid #4a9eff',
+              background: 'transparent',
+              color: page === 0 ? '#666' : '#4a9eff',
+              borderRadius: '4px',
+              cursor: page === 0 ? 'not-allowed' : 'pointer',
+              opacity: page === 0 ? 0.5 : 1
+            }}
+          >
+            « First
+          </button>
+          <button
+            onClick={() => setPage(p => Math.max(0, p - 1))}
+            disabled={page === 0}
+            style={{
+              padding: '8px 12px',
+              border: '1px solid #4a9eff',
+              background: 'transparent',
+              color: page === 0 ? '#666' : '#4a9eff',
+              borderRadius: '4px',
+              cursor: page === 0 ? 'not-allowed' : 'pointer',
+              opacity: page === 0 ? 0.5 : 1
+            }}
+          >
+            ‹ Previous
+          </button>
+          
+          {/* Page numbers */}
+          {Array.from({ length: Math.min(5, Math.ceil(totalResults / 25)) }, (_, i) => {
+            // Show pages around current page
+            let pageNum = page - 2 + i;
+            if (page < 3) pageNum = i; // First few pages
+            else if (page > Math.ceil(totalResults / 25) - 4) // Last few pages
+              pageNum = Math.max(0, Math.ceil(totalResults / 25) - 5) + i;
+              
+            if (pageNum < 0 || pageNum >= Math.ceil(totalResults / 25)) return null;
+            
+            return (
+              <button
+                key={pageNum}
+                onClick={() => setPage(pageNum)}
+                style={{
+                  padding: '8px 12px',
+                  border: '1px solid #4a9eff',
+                  background: page === pageNum ? '#4a9eff' : 'transparent',
+                  color: page === pageNum ? '#fff' : '#4a9eff',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontWeight: page === pageNum ? 'bold' : 'normal'
+                }}
+              >
+                {pageNum + 1}
+              </button>
+            );
+          })}
+          
+          <button
+            onClick={() => setPage(p => Math.min(Math.ceil(totalResults / 25) - 1, p + 1))}
+            disabled={page >= Math.ceil(totalResults / 25) - 1}
+            style={{
+              padding: '8px 12px',
+              border: '1px solid #4a9eff',
+              background: 'transparent',
+              color: page >= Math.ceil(totalResults / 25) - 1 ? '#666' : '#4a9eff',
+              borderRadius: '4px',
+              cursor: page >= Math.ceil(totalResults / 25) - 1 ? 'not-allowed' : 'pointer',
+              opacity: page >= Math.ceil(totalResults / 25) - 1 ? 0.5 : 1
+            }}
+          >
+            Next ›
+          </button>
+          <button
+            onClick={() => setPage(Math.ceil(totalResults / 25) - 1)}
+            disabled={page >= Math.ceil(totalResults / 25) - 1}
+            style={{
+              padding: '8px 12px',
+              border: '1px solid #4a9eff',
+          background: 'transparent',
+          color: page >= Math.ceil(totalResults / 25) - 1 ? '#666' : '#4a9eff',
+          borderRadius: '4px',
+          cursor: page >= Math.ceil(totalResults / 25) - 1 ? 'not-allowed' : 'pointer',
+          opacity: page >= Math.ceil(totalResults / 25) - 1 ? 0.5 : 1
+        }}
+      >
+        Last »
+      </button>
+    </div>
+  )}
     </div>
   )
 }
