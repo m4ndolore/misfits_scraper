@@ -129,15 +129,16 @@ export default function EnhancedSBIRTool() {
   }
 
   // Connect to your existing DoD API search with corrected filtering logic
-  const fetchOpportunities = useCallback(async () => {
+  const fetchOpportunities = useCallback(async (searchText?: string) => {
     setLoading(true)
     try {
       // Build search parameters based on the correct API format
       const filterParams: any = {}
       
       // Add search text if provided
-      if (searchTerm && searchTerm.trim()) {
-        filterParams.searchText = searchTerm.trim()
+      const searchValue = searchText !== undefined ? searchText : searchTerm;
+      if (searchValue && searchValue.trim()) {
+        filterParams.searchText = searchValue.trim()
       } else {
         filterParams.searchText = null
       }
@@ -274,8 +275,10 @@ export default function EnhancedSBIRTool() {
   }
 
   useEffect(() => {
+    // Only fetch when component mounts or filters change, not when searchTerm changes
     fetchOpportunities()
-  }, [fetchOpportunities])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeFilter, advancedFilters])
 
   // Transform your data to match Mandalorian UI format
   const transformOpportunityData = (opp: SBIROpportunity) => ({
@@ -565,22 +568,14 @@ export default function EnhancedSBIRTool() {
 
   const handleSearch = () => {
     setPage(0)
-    fetchOpportunities()
+    // Pass the current searchTerm to fetchOpportunities
+    fetchOpportunities(searchTerm)
   }
 
   const handleFilterChange = (filterKey: string) => {
     setActiveFilter(filterKey)
-    
-    // If it's a component category filter, update the components in advancedFilters
-    const selectedFilter = filters.find(f => f.key === filterKey)
-    if (selectedFilter?.components) {
-      setAdvancedFilters(prev => ({
-        ...prev,
-        components: selectedFilter.components
-      }))
-    }
-    
-    applyClientSideFilters(opportunities, filterKey)
+    setPage(0)
+    // No need to call fetchOpportunities here as the useEffect will handle it
   }
 
   const generatePDF = () => {
