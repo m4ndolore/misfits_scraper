@@ -1193,50 +1193,6 @@ export default function EnhancedSBIRTool() {
                 }}
               >
                 {filter.label}
-                {filter.components && activeFilter === filter.key && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '100%',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    background: 'rgba(26, 26, 26, 0.95)',
-                    border: '1px solid #333333',
-                    borderRadius: '8px',
-                    padding: '12px',
-                    marginTop: '8px',
-                    minWidth: '200px',
-                    zIndex: 100,
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)'
-                  }}>
-                    <div style={{
-                      color: '#c0c0c0',
-                      fontSize: '12px',
-                      fontWeight: 600,
-                      marginBottom: '8px',
-                      textTransform: 'uppercase',
-                      letterSpacing: '1px'
-                    }}>
-                      Selected Components:
-                    </div>
-                    <div style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '4px'
-                    }}>
-                      {filter.components.map(component => (
-                        <div key={component} style={{
-                          color: '#a0a0a0',
-                          fontSize: '12px',
-                          padding: '4px 8px',
-                          background: 'rgba(74, 158, 255, 0.1)',
-                          borderRadius: '4px'
-                        }}>
-                          {getComponentLabel(component)}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </button>
             ))}
           </div>
