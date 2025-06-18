@@ -33,6 +33,10 @@ app.use(cors({
 
 app.use(express.json());
 
+// Import AI analysis routes
+const analysisRoutes = require('./ai/routes/analysisRoutes');
+app.use('/api', analysisRoutes);
+
 // Define paths
 const frontendPath = path.join(__dirname, 'frontend', 'dist');
 const downloadsDir = path.join(__dirname, 'downloads');
