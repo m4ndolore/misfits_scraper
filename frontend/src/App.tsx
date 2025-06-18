@@ -275,10 +275,10 @@ export default function EnhancedSBIRTool() {
   }
 
   useEffect(() => {
-    // Only fetch when component mounts or filters change, not when searchTerm changes
+    // Fetch when component mounts, filters change, or page changes
     fetchOpportunities()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeFilter, advancedFilters])
+  }, [activeFilter, advancedFilters, page])
 
   // Transform your data to match Mandalorian UI format
   const transformOpportunityData = (opp: SBIROpportunity) => ({
