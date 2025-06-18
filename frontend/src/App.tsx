@@ -147,16 +147,10 @@ export default function EnhancedSBIRTool() {
       if (advancedFilters.components.length > 0) {
         filterParams.components = [...advancedFilters.components]
       } else if (activeFilter !== "all") {
-        // Map UI filter keys to API component values
-        const componentMap: {[key: string]: string} = {
-          "army": "ARMY",
-          "navy": "NAVY",
-          "air force": "AIR FORCE",
-          "defense": "DEFENSE AGENCIES"
-        };
-        
-        if (componentMap[activeFilter]) {
-          filterParams.components = [componentMap[activeFilter]]
+        // Find the filter configuration to get components
+        const selectedFilter = filters.find(f => f.key === activeFilter)
+        if (selectedFilter?.components) {
+          filterParams.components = selectedFilter.components
         }
       }
       
@@ -279,6 +273,36 @@ export default function EnhancedSBIRTool() {
     fetchOpportunities()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeFilter, advancedFilters, page])
+
+  // Sync advanced filters components with quick selection when components change
+  useEffect(() => {
+    // Only sync if we're not already in a component-based quick filter
+    const currentFilter = filters.find(f => f.key === activeFilter)
+    const currentComponents = currentFilter?.components || []
+    
+    // Check if current quick filter matches current advanced filter components
+    const componentsMatch = currentComponents.length === advancedFilters.components.length &&
+                           currentComponents.every(c => advancedFilters.components.includes(c))
+    
+    if (!componentsMatch) {
+      // Find matching quick filter for current advanced filter components
+      if (advancedFilters.components.length === 0) {
+        if (activeFilter !== "all") setActiveFilter("all")
+      } else if (advancedFilters.components.length === 1) {
+        const matchingFilter = filters.find(f => 
+          f.components && f.components.length === 1 && f.components[0] === advancedFilters.components[0]
+        )
+        if (matchingFilter && activeFilter !== matchingFilter.key) {
+          setActiveFilter(matchingFilter.key)
+        } else if (!matchingFilter && activeFilter !== "all") {
+          setActiveFilter("all")
+        }
+      } else {
+        // Multiple components - default to "all" if not already
+        if (activeFilter !== "all") setActiveFilter("all")
+      }
+    }
+  }, [advancedFilters.components, activeFilter, filters])
 
   // Transform your data to match Mandalorian UI format
   const transformOpportunityData = (opp: SBIROpportunity) => ({
@@ -575,7 +599,23 @@ export default function EnhancedSBIRTool() {
   const handleFilterChange = (filterKey: string) => {
     setActiveFilter(filterKey)
     setPage(0)
-    // No need to call fetchOpportunities here as the useEffect will handle it
+    
+    // Sync with advanced filters
+    const selectedFilter = filters.find(f => f.key === filterKey)
+    if (selectedFilter?.components) {
+      // Update advanced filters to match the quick selection
+      setAdvancedFilters(prev => ({
+        ...prev,
+        components: selectedFilter.components
+      }))
+    } else if (filterKey === "all") {
+      // Clear advanced filter components when "All Agencies" is selected
+      setAdvancedFilters(prev => ({
+        ...prev,
+        components: []
+      }))
+    }
+    // For topic-based filters (ai, cyber, energy), don't modify components
   }
 
   const generatePDF = () => {
@@ -1069,6 +1109,25 @@ export default function EnhancedSBIRTool() {
                     onClick={() => {
                       console.log('🔧 Applying Advanced Filters:', advancedFilters) // Debug log
                       setPage(0)
+                      
+                      // Sync with quick selection buttons
+                      if (advancedFilters.components.length === 0) {
+                        setActiveFilter("all")
+                      } else if (advancedFilters.components.length === 1) {
+                        // If exactly one component is selected, try to match it to a quick filter
+                        const matchingFilter = filters.find(f => 
+                          f.components && f.components.length === 1 && f.components[0] === advancedFilters.components[0]
+                        )
+                        if (matchingFilter) {
+                          setActiveFilter(matchingFilter.key)
+                        } else {
+                          setActiveFilter("all") // Default if no exact match
+                        }
+                      } else {
+                        // Multiple components selected, keep current or default to "all"
+                        setActiveFilter("all")
+                      }
+                      
                       fetchOpportunities()
                     }}
                     style={{
@@ -1098,6 +1157,8 @@ export default function EnhancedSBIRTool() {
                         components: [] // Reset components to empty array
                       })
                       setPage(0)
+                      // Reset quick selection to "All Agencies"
+                      setActiveFilter("all")
                       // Don't fetch immediately - let user click Apply
                     }}
                     style={{
