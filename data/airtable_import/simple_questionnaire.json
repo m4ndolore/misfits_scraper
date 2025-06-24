@@ -1,0 +1,164 @@
+{
+  "questionnaire_simple": {
+    "title": "iME Business Profile Questionnaire",
+    "sections": [
+      {
+        "name": "Technical Expertise",
+        "questions": [
+          {
+            "text": "Primary technical areas (select up to 5)",
+            "type": "multi_select",
+            "max": 5,
+            "required": true,
+            "options": [
+              "AI/Machine Learning",
+              "Cybersecurity", 
+              "Autonomous Systems",
+              "Communications & Networking",
+              "Sensors & Detection",
+              "Advanced Materials",
+              "Energy & Power",
+              "Software Engineering",
+              "Data Analytics",
+              "Quantum Technologies",
+              "Space Technologies",
+              "Biotechnology & Medical",
+              "Advanced Manufacturing",
+              "Modeling & Simulation",
+              "Hypersonics"
+            ]
+          },
+          {
+            "text": "Secondary technical areas",
+            "type": "multi_select",
+            "required": false,
+            "options": "same_as_above"
+          }
+        ]
+      },
+      {
+        "name": "Experience",
+        "questions": [
+          {
+            "text": "Agencies worked with",
+            "type": "multi_select",
+            "required": true,
+            "options": [
+              "Army", "Navy", "Air Force", "Space Force",
+              "DARPA", "DISA", "DLA", "MDA", "SOCOM",
+              "Other DoD", "NASA", "DOE", "DHS",
+              "No prior DoD experience"
+            ]
+          },
+          {
+            "text": "Contract types held",
+            "type": "multi_select",
+            "required": true,
+            "options": [
+              "SBIR Phase I", "SBIR Phase II", "SBIR Phase III",
+              "STTR", "BAA", "Other R&D", "Production Contracts",
+              "No prior contracts"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Business Preferences",
+        "questions": [
+          {
+            "text": "Preferred Phase I contract size",
+            "type": "single_select",
+            "required": true,
+            "options": [
+              "Under $150K",
+              "$150K - $250K",
+              "$250K+",
+              "Any size"
+            ]
+          },
+          {
+            "text": "Risk tolerance",
+            "type": "single_select", 
+            "required": true,
+            "options": [
+              "Conservative - Prefer well-defined, lower-risk opportunities",
+              "Moderate - Balance of risk and reward",
+              "Aggressive - Willing to tackle high-risk, high-reward challenges"
+            ]
+          },
+          {
+            "text": "Project timeline preference",
+            "type": "single_select",
+            "required": true,
+            "options": [
+              "Short-term (< 6 months)",
+              "Medium-term (6-12 months)", 
+              "Long-term (12+ months)",
+              "Flexible"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Team Capabilities",
+        "questions": [
+          {
+            "text": "Highest security clearance",
+            "type": "single_select",
+            "required": true,
+            "options": [
+              "No clearances",
+              "Public Trust",
+              "Secret",
+              "Top Secret",
+              "TS/SCI"
+            ]
+          },
+          {
+            "text": "Facility clearance",
+            "type": "single_select",
+            "required": true,
+            "options": ["Yes", "In Process", "No"]
+          },
+          {
+            "text": "Certifications",
+            "type": "multi_select",
+            "required": false,
+            "options": [
+              "ISO 9001", "CMMI", "ISO 27001", "AS9100",
+              "NIST 800-171 Compliant", "FedRAMP",
+              "Other", "None"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Innovation Profile",
+        "required_section": false,
+        "questions": [
+          {
+            "text": "Key innovation areas (select up to 3)",
+            "type": "multi_select",
+            "max": 3,
+            "required": false,
+            "options": [
+              "Novel Algorithms/Methods",
+              "Proprietary Technology",
+              "Unique Domain Expertise",
+              "Cost Reduction Innovations",
+              "Speed/Efficiency Improvements",
+              "System Integration Excellence",
+              "Strategic Partnerships"
+            ]
+          },
+          {
+            "text": "Competitive advantages",
+            "type": "text",
+            "required": false,
+            "placeholder": "Brief description of what makes your company unique..."
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "timestamp": "2025-06-17T21:58:54.265800",
+  "tables": {
+    "found_tables": [
+      "Alert"
+    ],
+    "count": 1
+  },
+  "fields": {
+    "found_fields": [],
+    "count": 0
+  },
+  "data_samples": {
+    "rows_extracted": 0,
+    "sample_data": [],
+    "total_rows_found": 0
+  },
+  "recommendations": []
+}
