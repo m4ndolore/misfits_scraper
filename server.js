@@ -25,7 +25,7 @@ console.log('===============================');
 
 // Enable CORS for all routes - explicitly allow the Vite dev server
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
+  origin: ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:5174', 'http://127.0.0.1:5174'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Accept', 'Authorization']
@@ -1233,7 +1233,7 @@ app.get('*', (req, res) => {
 console.log('Starting server...');
 
 // Start server with Playwright browser initialization
-const server = app.listen(PORT, '0.0.0.0', async () => {
+const server = app.listen(PORT, 'localhost', async () => {
     console.log('=== SERVER STARTUP COMPLETE ===');
     console.log(`✅ Server successfully started on port ${PORT}`);
     console.log(`✅ Listening on all interfaces (0.0.0.0:${PORT})`);

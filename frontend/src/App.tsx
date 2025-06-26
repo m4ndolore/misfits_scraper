@@ -64,7 +64,7 @@ export default function EnhancedSBIRTool() {
   const [loadingQuestions, setLoadingQuestions] = useState(false)
 
   // Your existing Express backend URL
-  const API_BASE_URL = 'http://localhost:3001'
+  const API_BASE_URL = 'http://localhost:3000'
 
   const filters = [
     { key: "all", label: "All Agencies", color: "#4a9eff" },

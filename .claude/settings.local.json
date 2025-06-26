@@ -11,7 +11,12 @@
       "Bash(python:*)",
       "Bash(pip install:*)",
       "Bash(playwright install)",
-      "WebFetch(domain:airtable.com)"
+      "WebFetch(domain:airtable.com)",
+      "Bash(lsof:*)",
+      "Bash(curl:*)",
+      "Bash(grep:*)",
+      "Bash(kill:*)",
+      "Bash(pkill:*)"
     ],
     "deny": []
   }
