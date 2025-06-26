@@ -1,6 +1,0 @@
-section_id,section_title,section_description,display_order,is_required
-technical_capabilities,Technical Capabilities & Expertise,Select all technology areas where your team has expertise,1,TRUE
-agency_experience,Agency Experience & Past Performance,Help us understand your experience with different agencies,2,TRUE
-business_preferences,Business Preferences & Risk Profile,Help us match opportunities to your business goals,3,TRUE
-team_capabilities,Team & Infrastructure,Tell us about your team's capabilities,4,TRUE
-innovation_profile,Innovation & Unique Value,What makes your company unique?,5,FALSE

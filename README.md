@@ -1,289 +1,108 @@
-# Defense Contract Intelligence Platform
+# DoD SBIR/STTR AI Opportunity Intelligence Platform
 
-An AI-powered copilot for defense industry contractors to discover, analyze, and pursue DoD contract opportunities. Currently focused on SBIR/STTR programs with plans to expand across all defense contracting opportunities.
+An AI-powered platform for discovering, analyzing, and matching DoD SBIR/STTR opportunities with business capabilities.
 
-## 🎯 Vision
+## Quick Start
 
-Transform defense contracting through intelligent opportunity matching, market insights, and AI-assisted proposal development. This platform bridges the gap between business capabilities and contract opportunities using advanced data analysis and machine learning.
+### Prerequisites
+- Node.js 20+ and npm
+- Python 3.8+ with virtual environment
+- Chrome/Chromium browser
 
-## 🚀 Current Features
+### Installation
 
-- **SBIR/STTR Data Intelligence**: Comprehensive scraping and analysis of DoD opportunities
-- **Advanced Filtering**: Multi-dimensional filtering by agency, technology area, status, and more
-- **Real-time Insights**: Live opportunity tracking with detailed Q&A and contact information
-- **Export Capabilities**: PDF generation for detailed opportunity analysis
-- **Modern UI**: Responsive React interface with synchronized filter systems
-
-## 🧠 AI Analysis Engine - PRODUCTION READY
-
-### ✅ Phase 1: Intelligent Matching (COMPLETED)
-- **✅ OpportunityAnalyzer**: AI-powered semantic analysis extracting technical requirements, difficulty scoring, and risk assessment
-- **✅ MatchingEngine**: 6-factor scoring algorithm weighing technical alignment, experience, risk tolerance, budget fit, strategic value, and competitive advantage
-- **✅ API Integration**: RESTful endpoints with comprehensive error handling and caching
-- **✅ Market Insights**: Automated trend analysis and competition assessment
-- **✅ Airtable Integration**: Successfully extracted 296 business profiles
-- **✅ Questionnaire Design**: 12-question onboarding system mapped to AI factors
-
-**Latest Progress (Dec 18, 2024)**:
-- Created comprehensive questionnaire covering technical capabilities, agency experience, and business preferences
-- Built Airtable base with all tables, relationships, and views
-- Designed email automation templates for user onboarding
-- Next: Form creation and automation setup (Dec 19)
-
-### 📋 Phase 2: Enhanced Intelligence (NEXT)
-- **LLM Integration**: Upgrade to GPT/Claude API for advanced semantic analysis
-- **Historical Analysis**: Integration with award databases for predictive insights
-- **UI Enhancement**: Display match scores and recommendations in opportunity interface
-- **Real-time Updates**: Live opportunity scoring as new opportunities are discovered
-
-### 🚀 Phase 3: AI Copilot (FUTURE)
-- **Proposal Assistance**: AI-guided proposal development and compliance checking
-- **Strategic Planning**: Long-term opportunity pipeline recommendations
-- **Teaming Intelligence**: Identify potential collaboration partners
-- **Market Positioning**: Strategic advice for competitive positioning
-
-## 🔗 Integration with iME
-
-This platform integrates with the **Integrated Modernization Environment (iME)** project which provides:
-- Comprehensive business profile management
-- Company capability databases  
-- Contractor certification tracking
-- Performance history analysis
-
-### Integration Status
-- **✅ API Requirements**: Complete specification delivered to iME team
-- **✅ Data Models**: Business profile schema with critical/high/medium priority fields
-- **✅ Test Framework**: Sample data and validation scripts ready
-- **🔄 Implementation**: Awaiting iME API endpoints for business profiles
-
-### Critical Data Requirements for iME
-```json
-{
-  "technicalAreas": ["AI/ML", "Cybersecurity", "Software Development"],
-  "pastPerformance": [
-    {
-      "agency": "ARMY",
-      "contractType": "SBIR Phase I", 
-      "value": 150000,
-      "performanceRating": "Excellent"
-    }
-  ],
-  "preferences": {
-    "agencyPreferences": ["ARMY", "NAVY"],
-    "budgetRange": { "min": 100000, "max": 2000000 },
-    "riskTolerance": "medium"
-  }
-}
+1. **Clone the repository**
+```bash
+git clone <repository-url>
+cd misfits_scraper
 ```
 
-The separation allows for specialized focus:
-- **iME**: Business profile capture and management
-- **This Platform**: Opportunity intelligence and AI-powered insights
-
-## Prerequisites
-
-- Node.js (v20 or higher)
-- Python 3.8+
-- Playwright browsers (`npx playwright install`)
-- npm or yarn
-
-## Getting Started
-
-### Backend
+2. **Install backend dependencies**
 ```bash
-# Start the backend server
+npm install
+```
+
+3. **Install frontend dependencies**
+```bash
+cd frontend
+npm install
+cd ..
+```
+
+4. **Set up Python environment**
+```bash
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
+npx playwright install chromium
+```
+
+### Running the Application
+
+1. **Start the backend server** (port 3000)
+```bash
 node server.js
 ```
 
-### Frontend
+2. **Start the frontend development server** (port 5173/5174)
 ```bash
 cd frontend
 npm run dev
 ```
 
-## Complete Installation
+3. **Access the application**
+- Open http://localhost:5173 (or the port shown in terminal)
+- The UI will display DoD SBIR/STTR opportunities with filtering and search
 
-1. Clone the repository:
-   ```bash
-   git clone <repository-url>
-   cd misfits_scraper
-   ```
+## Key Features
 
-2. Set up Python virtual environment:
-   ```bash
-   # Create a virtual environment
-   python -m venv venv
-   
-   # Activate the virtual environment
-   # On macOS/Linux:
-   source venv/bin/activate
-   # On Windows:
-   # .\venv\Scripts\activate
-   ```
+- **Smart Filtering**: Filter by agency, program phase, topic status, and keywords
+- **AI Analysis**: Each opportunity is analyzed for technical requirements, difficulty, and risks
+- **PDF Downloads**: Download both official PDFs and AI-generated detailed analysis
+- **Bulk Operations**: Select multiple topics for batch downloads
+- **Real-time Search**: Instant filtering as you type
 
-3. Install Python dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+## AI Analysis Engine
 
-4. Install Node.js dependencies:
-   ```bash
-   # Install backend dependencies
-   npm install
-   
-   # Install frontend dependencies
-   cd frontend
-   npm install
-   cd ..
-   ```
+The platform includes a production-ready AI analysis engine that provides:
 
-5. Install Playwright browsers:
-   ```bash
-   npx playwright install
-   ```
+- **Opportunity Analysis**: Extracts technical requirements, assesses difficulty (1-10 scale), identifies risks
+- **Match Scoring**: Scores opportunities against business profiles with 6 weighted factors
+- **Market Insights**: Generates strategic recommendations based on historical data
 
-6. (Optional) To deactivate the virtual environment when done:
-   ```bash
-   deactivate
-   ```
+### API Endpoints
 
-## Configuration
+- `POST /api/analyze-opportunities` - Batch analysis of opportunities
+- `POST /api/match-opportunities` - Score opportunities against profiles
+- `POST /api/analyze-single` - Analyze individual opportunity
+- `POST /api/market-insights` - Generate market intelligence
+- `GET /api/analysis-status` - Health check
 
-Create a `.env` file in the root directory with the following variables:
-
-```env
-PORT=3000
-NODE_ENV=development
-# Add other environment variables as needed
-```
-
-## Development
-
-### Running in Development Mode
-
-1. Start the backend server:
-   ```bash
-   npm run dev
-   ```
-
-2. In a separate terminal, start the frontend development server:
-   ```bash
-   cd frontend
-   npm run dev
-   ```
-
-3. Open your browser to `http://localhost:5173` (or the port shown in the console)
-
-### Production Build
-
-1. Build the frontend:
-   ```bash
-   npm run build
-   ```
-
-2. Start the production server:
-   ```bash
-   npm start
-   ```
-
-## Docker Support
-
-Build and run using Docker:
-
-```bash
-docker build -t misfits-scraper .
-docker run -p 3000:3000 misfits-scraper
-```
-
-## 🏗 Project Structure
+## Project Structure
 
 ```
-defense-contract-intelligence/
-├── frontend/                    # React TypeScript frontend
+misfits_scraper/
+├── server.js           # Express backend server
+├── script.py           # Playwright web scraper
+├── frontend/           # React TypeScript UI
 │   ├── src/
-│   │   ├── components/         # UI components
-│   │   │   ├── TopicsTable.tsx      # Main opportunity display
-│   │   │   ├── FilterPanel.tsx      # Advanced filtering
-│   │   │   └── TopicDetailModal.tsx # Detailed opportunity view
-│   │   ├── contexts/           # State management
-│   │   ├── hooks/              # Custom React hooks
-│   │   └── types/              # TypeScript interfaces
-├── backend/
-│   ├── server.js              # Express API server with AI routes
-│   ├── scraping/              # Data collection layer
-│   │   ├── script.py          # DoD SBIR/STTR scraper
-│   │   ├── discover_filters.py # Filter discovery
-│   │   └── discover_mod_ids.py # Module discovery
-│   └── ai/                    # ✅ PRODUCTION AI ENGINE
-│       ├── services/          # Core AI services
-│       │   ├── opportunityAnalyzer.js  # AI opportunity analysis
-│       │   └── matchingEngine.js       # Business profile matching
-│       ├── models/            # Data models and schemas
-│       │   └── businessProfile.js     # iME integration spec
-│       ├── routes/            # API endpoints
-│       │   └── analysisRoutes.js      # AI analysis APIs
-│       └── test/              # Testing framework
-│           └── testAnalysis.js        # Comprehensive test suite
-├── data/
-│   ├── filters.json          # Available filter configurations
-│   └── downloads/            # Scraped PDFs and data
-├── docs/
-│   ├── CLAUDE.md            # Development guidance
-│   └── iME-API-Requirements.md # Complete iME integration specification
-└── config/
-    ├── package.json         # Node.js dependencies
-    ├── requirements.txt     # Python dependencies
-    └── Dockerfile          # Container configuration
+│   │   └── App.tsx    # Main application component
+│   └── dist/          # Production build
+├── ai/                # AI analysis engine
+│   ├── services/      # Core AI services
+│   ├── routes/        # API endpoints
+│   └── test/          # Test suite
+└── downloads/         # Downloaded PDFs
 ```
 
-### 🤖 AI Engine Components
+## Development Commands
 
-**Core Services:**
-- `OpportunityAnalyzer`: Semantic analysis, difficulty scoring, risk assessment
-- `MatchingEngine`: 6-factor scoring algorithm for business profile alignment
+See [CLAUDE.md](./CLAUDE.md) for detailed development commands and Claude Code integration.
 
-**API Endpoints:**
-- `POST /api/analyze-opportunities` - Batch AI analysis
-- `POST /api/match-opportunities` - Score against business profiles
-- `POST /api/market-insights` - Generate market trend analysis
+## Future Roadmap
 
-**Testing:**
-- Complete test suite validating analysis accuracy and API compatibility
-- Sample data for Army, Navy, and Air Force opportunities
-- Business profile templates for integration testing
-
-## 🔮 Future Expansions
-
-### Contract Data Sources
-- **SAM.gov**: Federal contract opportunities beyond SBIR/STTR
-- **FPDS**: Historical contract award data for competition analysis
-- **USASpending.gov**: Budget and spending pattern analysis
-- **Agency-specific portals**: Direct integration with major DoD acquisition systems
-
-### AI Capabilities
-- **Natural Language Processing**: Advanced requirement extraction and analysis
-- **Predictive Analytics**: Success probability modeling based on historical data
-- **Recommendation Engine**: Sophisticated matching algorithms using vector embeddings
-- **Proposal Optimization**: AI-assisted writing and compliance verification
-
-### Business Intelligence
-- **Market Mapping**: Comprehensive defense industry landscape analysis
-- **Competitive Intelligence**: Track competitor activities and win patterns
-- **Relationship Mapping**: Network analysis for teaming and subcontracting
-- **Performance Metrics**: ROI analysis and success tracking
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+See [BACKLOG.md](./BACKLOG.md) for planned features and improvements.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Support
-
-For support, please open an issue in the repository.
+Proprietary - All rights reserved

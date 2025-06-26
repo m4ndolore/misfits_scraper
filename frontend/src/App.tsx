@@ -28,6 +28,8 @@ interface Download {
   filename: string | null
   error: string | null
   startTime: Date
+  officialPdfStatus?: 'pending' | 'downloading' | 'completed' | 'error'
+  detailsPdfStatus?: 'pending' | 'downloading' | 'completed' | 'error'
 }
 
 interface AdvancedFilters {
@@ -513,16 +515,50 @@ export default function EnhancedSBIRTool() {
 
     try {
       setDownloads(prev => prev.map(d => 
-        d.id === downloadId ? { ...d, status: 'downloading' } : d
+        d.id === downloadId ? { 
+          ...d, 
+          status: 'downloading',
+          officialPdfStatus: 'downloading',
+          detailsPdfStatus: 'pending'
+        } : d
       ))
 
       console.log('🚀 Starting downloads for topic:', topicCode)
 
-      // Try both downloads
-      const [officialResult, detailsResult] = await Promise.allSettled([
-        downloadOfficialPDF(topicCode),
-        downloadDetailsPDF(topicCode)
-      ])
+      // Download official PDF first
+      let officialResult
+      try {
+        await downloadOfficialPDF(topicCode)
+        officialResult = { status: 'fulfilled' }
+        setDownloads(prev => prev.map(d => 
+          d.id === downloadId ? { ...d, officialPdfStatus: 'completed' } : d
+        ))
+      } catch (error) {
+        officialResult = { status: 'rejected', reason: error }
+        setDownloads(prev => prev.map(d => 
+          d.id === downloadId ? { ...d, officialPdfStatus: 'error' } : d
+        ))
+      }
+
+      // Update to show details PDF is now downloading
+      setDownloads(prev => prev.map(d => 
+        d.id === downloadId ? { ...d, detailsPdfStatus: 'downloading' } : d
+      ))
+
+      // Download details PDF
+      let detailsResult
+      try {
+        await downloadDetailsPDF(topicCode)
+        detailsResult = { status: 'fulfilled' }
+        setDownloads(prev => prev.map(d => 
+          d.id === downloadId ? { ...d, detailsPdfStatus: 'completed' } : d
+        ))
+      } catch (error) {
+        detailsResult = { status: 'rejected', reason: error }
+        setDownloads(prev => prev.map(d => 
+          d.id === downloadId ? { ...d, detailsPdfStatus: 'error' } : d
+        ))
+      }
 
       let successCount = 0
       let errorMessages: string[] = []
@@ -1320,8 +1356,27 @@ export default function EnhancedSBIRTool() {
                       </div>
                       <div style={{ color: '#a0a0a0', fontSize: '12px' }}>
                         {download.status === 'pending' && 'Preparing downloads...'}
-                        {download.status === 'downloading' && 'Downloading official PDF + details PDF...'}
-                        {download.status === 'completed' && `✅ Both files downloaded: ${download.filename}`}
+                        {download.status === 'downloading' && (
+                          <div>
+                            <div style={{ marginBottom: '4px' }}>
+                              {download.officialPdfStatus === 'downloading' && '⏳ Downloading official PDF...'}
+                              {download.officialPdfStatus === 'completed' && '✅ Official PDF downloaded'}
+                              {download.officialPdfStatus === 'error' && '❌ Official PDF failed'}
+                            </div>
+                            <div>
+                              {download.detailsPdfStatus === 'pending' && '⏳ Details PDF waiting...'}
+                              {download.detailsPdfStatus === 'downloading' && '⏳ Generating details PDF (this may take 30-60 seconds)...'}
+                              {download.detailsPdfStatus === 'completed' && '✅ Details PDF generated'}
+                              {download.detailsPdfStatus === 'error' && '❌ Details PDF failed'}
+                            </div>
+                            {download.startTime && (
+                              <div style={{ fontSize: '11px', marginTop: '4px', opacity: 0.7 }}>
+                                Elapsed: {Math.round((Date.now() - download.startTime).valueOf() / 1000)}s
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        {download.status === 'completed' && `✅ Downloads complete: ${download.filename}`}
                         {download.status === 'error' && `❌ Error: ${download.error}`}
                       </div>
                     </div>
