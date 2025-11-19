@@ -700,14 +700,42 @@ export default function EnhancedSBIRTool() {
         ...prev,
         components: selectedFilter.components
       }))
-    } else if (filterKey === "all") {
-      // Clear advanced filter components when "All Agencies" is selected
+    } else if (filterKey === 'all') {
+      // Clear component filters when 'all' is selected
       setAdvancedFilters(prev => ({
         ...prev,
         components: []
       }))
     }
-    // For topic-based filters (ai, cyber, energy), don't modify components
+    
+    applyClientSideFilters(opportunities, filterKey)
+  }
+  
+  // Sync the UI filter buttons with advanced filter components
+  const syncFilterButtonsWithAdvancedComponents = () => {
+    // If components are selected in advanced filters, update the activeFilter accordingly
+    if (advancedFilters.components.length > 0) {
+      // Map API component values back to UI filter keys
+      const reverseComponentMap: {[key: string]: string} = {
+        "ARMY": "army",
+        "NAVY": "navy",
+        "AIR FORCE": "air force",
+        "DEFENSE AGENCIES": "defense"
+      };
+      
+      // If there's only one component selected and it matches our common filters
+      if (advancedFilters.components.length === 1) {
+        const componentValue = advancedFilters.components[0];
+        const matchingFilterKey = reverseComponentMap[componentValue];
+        
+        if (matchingFilterKey && matchingFilterKey !== activeFilter) {
+          setActiveFilter(matchingFilterKey);
+        }
+      } else {
+        // If multiple components are selected, we can't represent this in the common filters
+        // So we keep the activeFilter as is
+      }
+    }
   }
 
   const generatePDF = () => {
@@ -1233,6 +1261,8 @@ export default function EnhancedSBIRTool() {
                   <button
                     onClick={() => {
                       console.log('🔧 Applying Advanced Filters:', advancedFilters) // Debug log
+                      // Sync the common filter buttons with advanced filter components
+                      syncFilterButtonsWithAdvancedComponents()
                       setPage(0)
                       
                       // Sync with quick selection buttons
