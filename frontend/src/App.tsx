@@ -351,79 +351,83 @@ export default function EnhancedSBIRTool() {
     return tags
   }
 
-  const extractDeadline = (opp: SBIROpportunity) => {
+  const extractDeadline = (opp: SBIROpportunity): string => {
     try {
-      if (!opp.phaseHierarchy) return "Check Solicitation"
+      // Check if we have end date (deadline) - preferred method
+      if (opp.topicEndDate) {
+        const endDate = new Date(Number(opp.topicEndDate));
+        const now = new Date();
 
-      const parsed = JSON.parse(opp.phaseHierarchy)
-      const phases = parsed?.config || []
+        // Format the date nicely
+        const options: Intl.DateTimeFormatOptions = {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric'
+        };
+        const formattedDate = endDate.toLocaleDateString('en-US', options);
 
-      // Look for the latest phase with a close date
-      for (const phase of phases) {
-        if (phase.phaseCloseDate) {
-          const date = new Date(phase.phaseCloseDate)
-          return date.toLocaleDateString('en-US', {
-    // Check if we have end date (deadline)
-    if (opp.topicEndDate) {
-      const endDate = new Date(Number(opp.topicEndDate))
-      const now = new Date()
-      
-      // Format the date nicely
-      const formattedDate = endDate.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
-      })
-      
-      // Calculate days remaining
-      const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-      
-      // If the topic hasn't started yet, show the start date too
-      if (opp.topicStartDate) {
-        const startDate = new Date(Number(opp.topicStartDate))
+        // Calculate days remaining
+        const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+        // If the topic hasn't started yet, show the start date too
+        if (opp.topicStartDate) {
+          const startDate = new Date(Number(opp.topicStartDate));
+          if (startDate > now) {
+            const formattedStartDate = startDate.toLocaleDateString('en-US', options);
+            return `Opens: ${formattedStartDate}, Closes: ${formattedDate}`;
+          }
+        }
+
+        // Add days remaining if it's in the future
+        if (daysRemaining > 0) {
+          return `${formattedDate} (${daysRemaining} days left)`;
+        } else if (daysRemaining === 0) {
+          return `${formattedDate} (Due today!)`;
+        } else {
+          return `Closed on ${formattedDate}`;
+        }
+      } else if (opp.topicStartDate) {
+        // If no end date but we have start date
+        const startDate = new Date(Number(opp.topicStartDate));
+        const options: Intl.DateTimeFormatOptions = {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric'
+        };
+        const formattedDate = startDate.toLocaleDateString('en-US', options);
+
+        const now = new Date();
         if (startDate > now) {
-          const formattedStartDate = startDate.toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric'
-          })
+          return `Opens: ${formattedDate}`;
+        } else {
+          return `Opened: ${formattedDate}`;
+        }
+      }
+
+      // Fallback: Try parsing phaseHierarchy
+      if (opp.phaseHierarchy) {
+        const parsed: any = JSON.parse(opp.phaseHierarchy);
+        const phases: any[] = parsed?.config || [];
+
+        // Look for the latest phase with a close date
+        for (const phase of phases) {
+          if (phase.phaseCloseDate) {
+            const date = new Date(phase.phaseCloseDate);
+            const options: Intl.DateTimeFormatOptions = {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric'
+            };
+            return date.toLocaleDateString('en-US', options);
+          }
         }
       }
     } catch (error) {
-      console.error('Error parsing deadline:', error)
+      console.error('Error parsing deadline:', error);
     }
 
-          return `Opens: ${formattedStartDate}, Closes: ${formattedDate}`
-        }
-      }
-      
-      // Add days remaining if it's in the future
-      if (daysRemaining > 0) {
-        return `${formattedDate} (${daysRemaining} days left)`
-      } else if (daysRemaining === 0) {
-        return `${formattedDate} (Due today!)`
-      } else {
-        return `Closed on ${formattedDate}`
-      }
-    } else if (opp.topicStartDate) {
-      // If no end date but we have start date
-      const startDate = new Date(Number(opp.topicStartDate))
-      const formattedDate = startDate.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
-      })
-      
-      const now = new Date()
-      if (startDate > now) {
-        return `Opens: ${formattedDate}`
-      } else {
-        return `Opened: ${formattedDate}`
-      }
-    }
-    
-    // Fallback if no dates are available
-    return "Check Solicitation"
+    // Final fallback if no dates are available
+    return "Check Solicitation";
   }
 
   const getPriorityColor = (priority: string) => {
