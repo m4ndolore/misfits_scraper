@@ -19,6 +19,9 @@ interface SBIROpportunity {
   }>
   numQuestions?: number
   questions?: any[]
+  topicEndDate?: number | string
+  topicStartDate?: number | string
+  noOfPublishedQuestions?: number
 }
 
 interface Download {
@@ -360,6 +363,26 @@ export default function EnhancedSBIRTool() {
         if (phase.phaseCloseDate) {
           const date = new Date(phase.phaseCloseDate)
           return date.toLocaleDateString('en-US', {
+    // Check if we have end date (deadline)
+    if (opp.topicEndDate) {
+      const endDate = new Date(Number(opp.topicEndDate))
+      const now = new Date()
+      
+      // Format the date nicely
+      const formattedDate = endDate.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      })
+      
+      // Calculate days remaining
+      const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+      
+      // If the topic hasn't started yet, show the start date too
+      if (opp.topicStartDate) {
+        const startDate = new Date(Number(opp.topicStartDate))
+        if (startDate > now) {
+          const formattedStartDate = startDate.toLocaleDateString('en-US', {
             month: 'short',
             day: 'numeric',
             year: 'numeric'
@@ -370,6 +393,36 @@ export default function EnhancedSBIRTool() {
       console.error('Error parsing deadline:', error)
     }
 
+          return `Opens: ${formattedStartDate}, Closes: ${formattedDate}`
+        }
+      }
+      
+      // Add days remaining if it's in the future
+      if (daysRemaining > 0) {
+        return `${formattedDate} (${daysRemaining} days left)`
+      } else if (daysRemaining === 0) {
+        return `${formattedDate} (Due today!)`
+      } else {
+        return `Closed on ${formattedDate}`
+      }
+    } else if (opp.topicStartDate) {
+      // If no end date but we have start date
+      const startDate = new Date(Number(opp.topicStartDate))
+      const formattedDate = startDate.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      })
+      
+      const now = new Date()
+      if (startDate > now) {
+        return `Opens: ${formattedDate}`
+      } else {
+        return `Opened: ${formattedDate}`
+      }
+    }
+    
+    // Fallback if no dates are available
     return "Check Solicitation"
   }
 
@@ -665,14 +718,42 @@ export default function EnhancedSBIRTool() {
         ...prev,
         components: selectedFilter.components
       }))
-    } else if (filterKey === "all") {
-      // Clear advanced filter components when "All Agencies" is selected
+    } else if (filterKey === 'all') {
+      // Clear component filters when 'all' is selected
       setAdvancedFilters(prev => ({
         ...prev,
         components: []
       }))
     }
-    // For topic-based filters (ai, cyber, energy), don't modify components
+    
+    applyClientSideFilters(opportunities, filterKey)
+  }
+  
+  // Sync the UI filter buttons with advanced filter components
+  const syncFilterButtonsWithAdvancedComponents = () => {
+    // If components are selected in advanced filters, update the activeFilter accordingly
+    if (advancedFilters.components.length > 0) {
+      // Map API component values back to UI filter keys
+      const reverseComponentMap: {[key: string]: string} = {
+        "ARMY": "army",
+        "NAVY": "navy",
+        "AIR FORCE": "air force",
+        "DEFENSE AGENCIES": "defense"
+      };
+      
+      // If there's only one component selected and it matches our common filters
+      if (advancedFilters.components.length === 1) {
+        const componentValue = advancedFilters.components[0];
+        const matchingFilterKey = reverseComponentMap[componentValue];
+        
+        if (matchingFilterKey && matchingFilterKey !== activeFilter) {
+          setActiveFilter(matchingFilterKey);
+        }
+      } else {
+        // If multiple components are selected, we can't represent this in the common filters
+        // So we keep the activeFilter as is
+      }
+    }
   }
 
   const generatePDF = () => {
@@ -718,6 +799,16 @@ export default function EnhancedSBIRTool() {
     
     let processed = content
     
+    // Handle JSON objects or strings that might be JSON
+    if (typeof processed === 'string' && (processed.startsWith('{') || processed.startsWith('['))) {
+      try {
+        const parsedJson = JSON.parse(processed)
+        processed = parsedJson
+      } catch (e) {
+        // Not valid JSON, keep as is
+      }
+    }
+    
     // Handle JSON objects
     if (typeof processed === 'object' && processed !== null) {
       // If it's an object, try to extract meaningful text
@@ -727,9 +818,32 @@ export default function EnhancedSBIRTool() {
         processed = processed.answer
       } else if (processed.text) {
         processed = processed.text
+      } else if (Array.isArray(processed) && processed.length) {
+        // It might be an array
+        processed = processed.join(' ')
       } else {
-        // If it's a complex object, stringify it but make it readable
-        processed = JSON.stringify(processed, null, 2)
+        // Check for common API response patterns
+        const possibleTextFields = ['body', 'message', 'description', 'value', 'data']
+        for (const field of possibleTextFields) {
+          if (processed[field]) {
+            processed = processed[field]
+            break
+          }
+        }
+        
+        // If still an object, extract values instead of stringifying the whole object
+        if (typeof processed === 'object' && processed !== null) {
+          // Just extract all values and join them
+          const values = Object.values(processed)
+            .filter(val => typeof val === 'string' || typeof val === 'number')
+          
+          if (values.length > 0) {
+            processed = values.join(' ')
+          } else {
+            // If we couldn't extract any values, use the full string but without formatting
+            processed = JSON.stringify(processed)
+          }
+        }
       }
     }
     
@@ -1165,6 +1279,8 @@ export default function EnhancedSBIRTool() {
                   <button
                     onClick={() => {
                       console.log('🔧 Applying Advanced Filters:', advancedFilters) // Debug log
+                      // Sync the common filter buttons with advanced filter components
+                      syncFilterButtonsWithAdvancedComponents()
                       setPage(0)
                       
                       // Sync with quick selection buttons
