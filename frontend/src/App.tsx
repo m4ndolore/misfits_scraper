@@ -1512,7 +1512,7 @@ export default function EnhancedSBIRTool() {
                             </div>
                             {download.startTime && (
                               <div style={{ fontSize: '11px', marginTop: '4px', opacity: 0.7 }}>
-                                Elapsed: {Math.round((Date.now() - download.startTime).valueOf() / 1000)}s
+                                Elapsed: {Math.round((Date.now() - download.startTime.getTime()) / 1000)}s
                               </div>
                             )}
                           </div>
