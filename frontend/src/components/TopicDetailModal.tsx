@@ -669,7 +669,7 @@ const TopicDetailModal: React.FC<TopicDetailModalProps> = ({ open, onClose, topi
                         <AccordionDetails sx={{ backgroundColor: 'rgba(0, 0, 0, 0.02)', pt: 2 }}>
                           {qa.answers && qa.answers.length > 0 ? (
                             <>
-                              {qa.answers.map((answer: { answer: string; answeredOn: string }, idx: number) => (
+                              {qa.answers.map((answer: { content: string; answeredOn: string }, idx: number) => (
                                 <Box key={idx} sx={{ mb: 2 }}>
                                   <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
                                     <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
@@ -688,10 +688,10 @@ const TopicDetailModal: React.FC<TopicDetailModalProps> = ({ open, onClose, topi
                                       border: '1px solid rgba(0, 0, 0, 0.04)'
                                     }}
                                   >
-                                    {cleanAnswerContent(answer.answer, qa.question).startsWith('https://www.youtube.com/embed/') ? (
+                                    {cleanAnswerContent(answer.content, qa.question).startsWith('https://www.youtube.com/embed/') ? (
                                       <Box sx={{ mt: 2, position: 'relative', pb: '56.25%', height: 0, overflow: 'hidden' }}>
                                         <iframe
-                                          src={cleanAnswerContent(answer.answer, qa.question)}
+                                          src={cleanAnswerContent(answer.content, qa.question)}
                                           style={{
                                             position: 'absolute',
                                             top: 0,
@@ -721,7 +721,7 @@ const TopicDetailModal: React.FC<TopicDetailModalProps> = ({ open, onClose, topi
                                           }
                                         }}
                                       >
-                                        {cleanAnswerContent(answer.answer, qa.question) || 'No answer text available'}
+                                        {cleanAnswerContent(answer.content, qa.question) || 'No answer text available'}
                                       </Typography>
                                     )}
                                   </Paper>

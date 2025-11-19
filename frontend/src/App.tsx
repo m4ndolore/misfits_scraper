@@ -9,6 +9,7 @@ interface SBIROpportunity {
   program: string
   topicStatus: string
   solicitationTitle: string
+  phaseHierarchy?: string
   objective?: string
   description?: string
   topicManagers: Array<{
@@ -348,7 +349,27 @@ export default function EnhancedSBIRTool() {
   }
 
   const extractDeadline = (opp: SBIROpportunity) => {
-    // You might want to enhance this with actual deadline parsing
+    try {
+      if (!opp.phaseHierarchy) return "Check Solicitation"
+
+      const parsed = JSON.parse(opp.phaseHierarchy)
+      const phases = parsed?.config || []
+
+      // Look for the latest phase with a close date
+      for (const phase of phases) {
+        if (phase.phaseCloseDate) {
+          const date = new Date(phase.phaseCloseDate)
+          return date.toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+          })
+        }
+      }
+    } catch (error) {
+      console.error('Error parsing deadline:', error)
+    }
+
     return "Check Solicitation"
   }
 
@@ -2230,7 +2251,7 @@ export default function EnhancedSBIRTool() {
                                 lineHeight: 1.6,
                                 fontSize: '15px'
                               }}>
-                                {cleanContent(answer.answer)}
+                                {cleanContent(answer.content)}
                               </div>
                             </div>
                           ))
