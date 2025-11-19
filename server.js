@@ -1179,10 +1179,10 @@ function generateTopicHTML(topic, questions) {
                     ${Array.isArray(qa.answers) && qa.answers.length > 0 ? qa.answers.map(answer => `
                         <div class="answer">
                             <div class="answer-header">
-                                Official Response 
+                                Official Response
                                 ${answer.answeredOn ? `- Answered: ${new Date(answer.answeredOn).toLocaleDateString()}` : ''}
                             </div>
-                            <div>${cleanContent(answer.answer) || 'No answer text available'}</div>
+                            <div>${cleanContent(answer.content) || 'No answer text available'}</div>
                         </div>
                     `).join('') : '<div style="font-style: italic; color: #666;">No official response yet.</div>'}
                 </div>

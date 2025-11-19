@@ -55,7 +55,7 @@ export interface QuestionAnswer {
   questionNo: number;
   question: string;
   answers: {
-    answer: string;
+    content: string;
     answeredOn: string;
   }[];
   questionStatus: string;
