@@ -31,7 +31,7 @@ interface Download {
   progress: number
   filename: string | null
   error: string | null
-  startTime: Date
+  startTime: number
   officialPdfStatus?: 'pending' | 'downloading' | 'completed' | 'error'
   detailsPdfStatus?: 'pending' | 'downloading' | 'completed' | 'error'
 }
@@ -586,7 +586,7 @@ export default function EnhancedSBIRTool() {
       progress: 0,
       filename: null,
       error: null,
-      startTime: new Date()
+      startTime: Date.now()
     }
     
     setDownloads(prev => [newDownload, ...prev])
@@ -1512,7 +1512,7 @@ export default function EnhancedSBIRTool() {
                             </div>
                             {download.startTime && (
                               <div style={{ fontSize: '11px', marginTop: '4px', opacity: 0.7 }}>
-                                Elapsed: {Math.round((Date.now() - download.startTime).valueOf() / 1000)}s
+                                Elapsed: {Math.round((Date.now() - download.startTime) / 1000)}s
                               </div>
                             )}
                           </div>
