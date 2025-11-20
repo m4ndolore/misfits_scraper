@@ -838,30 +838,55 @@ function generateTopicHTML(topic, questions) {
   // Helper function to clean HTML/JSON content
   const cleanContent = (content) => {
     if (!content) return '';
-    
+
     let processed = content;
-    
-    try {
-      const parsed = JSON.parse(processed);
-      if (typeof parsed === 'object' && parsed !== null) {
-        if ('content' in parsed) {
-          processed = parsed.content;
-        } else if ('answer' in parsed) {
-          processed = parsed.answer;
+
+    // Handle objects directly
+    if (typeof processed === 'object' && processed !== null) {
+      // Try common field names for answer text
+      if (processed.answer) {
+        processed = processed.answer;
+      } else if (processed.content) {
+        processed = processed.content;
+      } else if (processed.text) {
+        processed = processed.text;
+      } else if (processed.response) {
+        processed = processed.response;
+      } else {
+        // Try to extract any string values
+        const stringValues = Object.values(processed).filter(val => typeof val === 'string' && val.length > 0);
+        if (stringValues.length > 0) {
+          processed = stringValues.join(' ');
+        } else {
+          return '';
         }
       }
-    } catch (e) {
-      // Not JSON, continue
     }
-    
+
+    // Handle string content that might be JSON
+    if (typeof processed === 'string') {
+      try {
+        const parsed = JSON.parse(processed);
+        if (typeof parsed === 'object' && parsed !== null) {
+          if ('answer' in parsed) {
+            processed = parsed.answer;
+          } else if ('content' in parsed) {
+            processed = parsed.content;
+          }
+        }
+      } catch (e) {
+        // Not JSON, continue
+      }
+    }
+
     // Remove HTML tags and decode entities
-    const temp = processed.replace(/<[^>]*>/g, ' ')
+    const temp = String(processed).replace(/<[^>]*>/g, ' ')
                             .replace(/&nbsp;/g, ' ')
                             .replace(/&amp;/g, '&')
                             .replace(/&lt;/g, '<')
                             .replace(/&gt;/g, '>')
                             .replace(/&quot;/g, '"');
-    
+
     return temp.trim();
   };
 
@@ -1182,7 +1207,7 @@ function generateTopicHTML(topic, questions) {
                                 Official Response
                                 ${answer.answeredOn ? `- Answered: ${new Date(answer.answeredOn).toLocaleDateString()}` : ''}
                             </div>
-                            <div>${cleanContent(answer.content) || 'No answer text available'}</div>
+                            <div>${cleanContent(answer) || 'No answer text available'}</div>
                         </div>
                     `).join('') : '<div style="font-style: italic; color: #666;">No official response yet.</div>'}
                 </div>
