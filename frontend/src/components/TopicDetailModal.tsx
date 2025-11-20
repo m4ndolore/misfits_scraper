@@ -244,30 +244,56 @@ const TopicDetailModal: React.FC<TopicDetailModalProps> = ({ open, onClose, topi
   ), [theme]);
 
   // Function to clean content from HTML/JSON
-  const cleanContent = useCallback((content: string | undefined): string => {
+  const cleanContent = useCallback((content: any): string => {
     if (!content) return '';
-    
+
     let processedContent = content;
-    
-    try {
-      // Try to parse as JSON first
-      const parsed = JSON.parse(processedContent);
-      if (typeof parsed === 'object' && parsed !== null) {
-        // If it's an object with content/answer property, use that
-        if ('content' in parsed) {
-          processedContent = parsed.content;
-        } else if ('answer' in parsed) {
-          processedContent = parsed.answer;
+
+    // Handle objects directly
+    if (typeof processedContent === 'object' && processedContent !== null) {
+      // Try common field names for answer text
+      if (processedContent.answer) {
+        processedContent = processedContent.answer;
+      } else if (processedContent.content) {
+        processedContent = processedContent.content;
+      } else if (processedContent.text) {
+        processedContent = processedContent.text;
+      } else if (processedContent.response) {
+        processedContent = processedContent.response;
+      } else {
+        // Try to extract any string values
+        const stringValues = Object.values(processedContent)
+          .filter(val => typeof val === 'string' && val.length > 0);
+        if (stringValues.length > 0) {
+          processedContent = stringValues.join(' ');
         } else {
-          // Otherwise stringify the object
-          return Object.values(parsed)
-            .filter(val => typeof val === 'string')
-            .join(' ')
-            .replace(/<[^>]*>/g, '');
+          return '';
         }
       }
-    } catch (e) {
-      // Not JSON, continue with HTML cleaning
+    }
+
+    // Handle string content that might be JSON
+    if (typeof processedContent === 'string') {
+      try {
+        // Try to parse as JSON first
+        const parsed = JSON.parse(processedContent);
+        if (typeof parsed === 'object' && parsed !== null) {
+          // If it's an object with content/answer property, use that
+          if ('answer' in parsed) {
+            processedContent = parsed.answer;
+          } else if ('content' in parsed) {
+            processedContent = parsed.content;
+          } else {
+            // Otherwise stringify the object
+            return Object.values(parsed)
+              .filter(val => typeof val === 'string')
+              .join(' ')
+              .replace(/<[^>]*>/g, '');
+          }
+        }
+      } catch (e) {
+        // Not JSON, continue with HTML cleaning
+      }
     }
     
     // Handle YouTube links
@@ -284,9 +310,9 @@ const TopicDetailModal: React.FC<TopicDetailModalProps> = ({ open, onClose, topi
   }, []);
   
   // Enhanced function to clean answer content and remove duplicate questions
-  const cleanAnswerContent = useCallback((answerContent: string, originalQuestion?: string): string => {
+  const cleanAnswerContent = useCallback((answerContent: any, originalQuestion?: string): string => {
     if (!answerContent) return '';
-    
+
     let cleaned = cleanContent(answerContent);
     
     // If we have the original question, try to remove it from the answer
@@ -688,10 +714,10 @@ const TopicDetailModal: React.FC<TopicDetailModalProps> = ({ open, onClose, topi
                                       border: '1px solid rgba(0, 0, 0, 0.04)'
                                     }}
                                   >
-                                    {cleanAnswerContent(answer.content, qa.question).startsWith('https://www.youtube.com/embed/') ? (
+                                    {cleanAnswerContent(answer, qa.question).startsWith('https://www.youtube.com/embed/') ? (
                                       <Box sx={{ mt: 2, position: 'relative', pb: '56.25%', height: 0, overflow: 'hidden' }}>
                                         <iframe
-                                          src={cleanAnswerContent(answer.content, qa.question)}
+                                          src={cleanAnswerContent(answer, qa.question)}
                                           style={{
                                             position: 'absolute',
                                             top: 0,
@@ -721,7 +747,7 @@ const TopicDetailModal: React.FC<TopicDetailModalProps> = ({ open, onClose, topi
                                           }
                                         }}
                                       >
-                                        {cleanAnswerContent(answer.content, qa.question) || 'No answer text available'}
+                                        {cleanAnswerContent(answer, qa.question) || 'No answer text available'}
                                       </Typography>
                                     )}
                                   </Paper>

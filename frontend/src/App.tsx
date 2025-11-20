@@ -878,7 +878,7 @@ export default function EnhancedSBIRTool() {
   const showQADetails = async (topic: SBIROpportunity) => {
     setLoadingQuestions(true)
     setShowQAModal(true)
-    
+
     try {
       // Fetch fresh Q&A data
       const response = await fetch(`https://www.dodsbirsttr.mil/topics/api/public/topics/${topic.topicId}/questions`)
@@ -886,6 +886,13 @@ export default function EnhancedSBIRTool() {
         const qaData = await response.json()
         const questions = Array.isArray(qaData) ? qaData : []
         questions.sort((a: any, b: any) => (a.questionNo || 0) - (b.questionNo || 0))
+
+        // Debug logging to see actual API response structure
+        if (questions.length > 0 && questions[0].answers && questions[0].answers.length > 0) {
+          console.log('🔍 Sample answer structure:', questions[0].answers[0])
+          console.log('🔍 Answer keys:', Object.keys(questions[0].answers[0]))
+        }
+
         setSelectedTopicQuestions(questions)
         console.log('✅ Loaded Q&A details:', questions.length, 'questions')
       } else {
@@ -2371,7 +2378,7 @@ export default function EnhancedSBIRTool() {
                                 lineHeight: 1.6,
                                 fontSize: '15px'
                               }}>
-                                {cleanContent(answer.content)}
+                                {cleanContent(answer)}
                               </div>
                             </div>
                           ))
