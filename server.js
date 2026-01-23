@@ -62,7 +62,7 @@ if (fs.existsSync('/opt/venv')) {
       
       // Test playwright import specifically
       try {
-        const playwrightImport = require('child_process').execSync('/opt/venv/bin/python -c "import playwright.sync_api; print(playwright.__version__)"', { stdio: 'pipe', timeout: 10000 }).toString().trim();
+        const playwrightImport = require('child_process').execSync('/opt/venv/bin/python -c "import playwright; print(playwright.__version__)"', { stdio: 'pipe', timeout: 10000 }).toString().trim();
         console.log('✅ Playwright version in venv:', playwrightImport);
       } catch (playwrightErr) {
         console.error('❌ Playwright import failed in venv:', playwrightErr.message);
@@ -1233,7 +1233,7 @@ app.get('*', (req, res) => {
 console.log('Starting server...');
 
 // Start server with Playwright browser initialization
-const server = app.listen(PORT, 'localhost', async () => {
+const server = app.listen(PORT, '0.0.0.0', async () => {
     console.log('=== SERVER STARTUP COMPLETE ===');
     console.log(`✅ Server successfully started on port ${PORT}`);
     console.log(`✅ Listening on all interfaces (0.0.0.0:${PORT})`);
