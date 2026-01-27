@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from "react"
+import MCHeader from "./components/MCHeader"
+import MCFooter from "./components/MCFooter"
 
 // TypeScript interfaces matching your backend data structure
 interface SBIROpportunity {
@@ -920,11 +922,13 @@ export default function EnhancedSBIRTool() {
   }
 
   return (
-    <div style={{
-      background: '#000000',
-      minHeight: '100vh',
-      padding: '0'
-    }}>
+    <>
+      <MCHeader />
+      <div style={{
+        background: '#000000',
+        minHeight: '100vh',
+        padding: '0'
+      }}>
       <div style={{
         background: 'linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 50%, #0f0f0f 100%)',
         borderRadius: '20px',
@@ -2543,5 +2547,7 @@ export default function EnhancedSBIRTool() {
     </div>
   )}
     </div>
+      <MCFooter />
+    </>
   )
 }

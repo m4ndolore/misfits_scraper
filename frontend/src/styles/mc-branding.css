@@ -1,0 +1,133 @@
+/* Merge Combinator Branding for SBIR Tool */
+
+:root {
+  --mc-bg: #0b1116;
+  --mc-border: rgba(255,255,255,0.1);
+  --mc-text: #e5e7eb;
+  --mc-text-muted: rgba(229,231,235,0.6);
+  --mc-accent: #0ea5e9;
+}
+
+/* Header */
+.mc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 48px;
+  padding: 0 24px;
+  background: var(--mc-bg);
+  border-bottom: 1px solid var(--mc-border);
+}
+
+.mc-header__brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  transition: opacity 0.15s ease;
+}
+
+.mc-header__brand:hover {
+  opacity: 0.8;
+}
+
+.mc-header__logo-text {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.mc-header__logo-merge {
+  font-family: 'Lora', Georgia, serif;
+  font-size: 13px;
+  font-weight: 400;
+  font-style: italic;
+  color: rgba(242, 245, 247, 0.7);
+}
+
+.mc-header__logo-combinator {
+  font-family: 'Helvetica Neue', 'Inter', Helvetica, Arial, sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--mc-text);
+}
+
+.mc-header__logo-icon {
+  height: 16px;
+  width: auto;
+}
+
+.mc-header__page-title {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--mc-text-muted);
+}
+
+/* Footer */
+.mc-footer {
+  background: var(--mc-bg);
+  border-top: 1px solid var(--mc-border);
+  padding: 40px 24px;
+  text-align: center;
+}
+
+.mc-footer__brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  text-decoration: none;
+}
+
+.mc-footer__logo-mark {
+  font-family: 'Helvetica Neue', 'Inter', Helvetica, Arial, sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--mc-accent);
+}
+
+.mc-footer__logo-text {
+  font-family: 'Helvetica Neue', 'Inter', Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--mc-text);
+}
+
+.mc-footer__tagline {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: var(--mc-text-muted);
+  margin-bottom: 24px;
+}
+
+.mc-footer__links {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.mc-footer__link {
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+  color: var(--mc-text-muted);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.mc-footer__link:hover {
+  color: var(--mc-accent);
+}
+
+.mc-footer__copyright {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  color: rgba(229,231,235,0.4);
+}
