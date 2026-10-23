@@ -1189,8 +1189,8 @@ function generateTopicHTML(topic, questions) {
             <div class="question">
                 <div class="question-header">
                     Question #${qa.questionNo || 'N/A'}
-                    <span class="status-badge ${qa.questionStatus === 'Answered' ? '' : 'status-pending'}">
-                        ${qa.questionStatus || 'Pending'}
+                    <span class="status-badge ${qa.questionStatus === 'COMPLETED' ? '' : 'status-pending'}">
+                        ${qa.questionStatusDisplay || qa.questionStatus || 'Pending'}
                     </span>
                 </div>
                 <div class="question-content">

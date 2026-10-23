@@ -55,10 +55,14 @@ export interface QuestionAnswer {
   questionNo: number;
   question: string;
   answers: {
-    content: string;
-    answeredOn: string;
+    answerId?: number;
+    // JSON string: {"content": "<html>"}
+    answer?: string;
+    content?: string;
+    answeredOn?: string;
   }[];
   questionStatus: string;
+  questionStatusDisplay?: string;
   questionSubmittedOn: string;
 }
 
