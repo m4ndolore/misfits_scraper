@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react"
 import MCHeader from "./components/MCHeader"
 import MCFooter from "./components/MCFooter"
+import { isAnswered, statusLabel } from "./utils/qaStatus"
 
 // TypeScript interfaces matching your backend data structure
 interface SBIROpportunity {
@@ -2308,7 +2309,7 @@ export default function EnhancedSBIRTool() {
                               </div>
                             )}
                             <div style={{
-                              background: qa.questionStatus === 'Answered' ? '#28a745' : '#dc3545',
+                              background: isAnswered(qa) ? '#28a745' : '#dc3545',
                               color: '#ffffff',
                               padding: '4px 8px',
                               borderRadius: '12px',
@@ -2316,7 +2317,7 @@ export default function EnhancedSBIRTool() {
                               fontWeight: 700,
                               textTransform: 'uppercase'
                             }}>
-                              {qa.questionStatus || 'Pending'}
+                              {statusLabel(qa)}
                             </div>
                           </div>
                         </div>

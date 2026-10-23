@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import { format } from 'date-fns';
 import { Topic, QuestionAnswer, DetailedTopic } from '../types';
+import { isAnswered, statusLabel } from '../utils/qaStatus';
 import {
   Dialog,
   DialogContent,
@@ -668,10 +669,10 @@ const TopicDetailModal: React.FC<TopicDetailModalProps> = ({ open, onClose, topi
                                 Question #{qa.questionNo}
                               </Typography>
                               <Chip 
-                                label={qa.questionStatus || 'Pending'} 
-                                size="small" 
+                                label={statusLabel(qa)}
+                                size="small"
                                 sx={{
-                                  backgroundColor: qa.questionStatus === 'Answered' ? 'success.main' : 'error.light',
+                                  backgroundColor: isAnswered(qa) ? 'success.main' : 'error.light',
                                   color: 'white',
                                   '& .MuiChip-label': {
                                     px: 1,
@@ -695,15 +696,17 @@ const TopicDetailModal: React.FC<TopicDetailModalProps> = ({ open, onClose, topi
                         <AccordionDetails sx={{ backgroundColor: 'rgba(0, 0, 0, 0.02)', pt: 2 }}>
                           {qa.answers && qa.answers.length > 0 ? (
                             <>
-                              {qa.answers.map((answer: { content: string; answeredOn: string }, idx: number) => (
-                                <Box key={idx} sx={{ mb: 2 }}>
+                              {qa.answers.map((answer, idx) => (
+                                <Box key={answer.answerId ?? idx} sx={{ mb: 2 }}>
                                   <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
                                     <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
                                       Official Response
                                     </Typography>
-                                    <Typography variant="caption" color="text.secondary">
-                                      Answered on {answer.answeredOn ? format(new Date(answer.answeredOn), 'MMM d, yyyy') : 'N/A'}
-                                    </Typography>
+                                    {answer.answeredOn && (
+                                      <Typography variant="caption" color="text.secondary">
+                                        Answered on {format(new Date(answer.answeredOn), 'MMM d, yyyy')}
+                                      </Typography>
+                                    )}
                                   </Box>
                                   <Paper 
                                     elevation={0} 
